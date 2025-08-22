@@ -1,0 +1,30 @@
+{
+  "dependencies": {
+    "expo-document-picker": "~13.1.6",
+    "expo-file-system": "~18.1.11",
+    "react-native": "0.79.5"
+  },
+  "name": "gameday_optimizer",
+  "version": "1.0.0",
+  "description": "build the perfect NFL Fantasy team using this site",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/allenarnoldy/gameday_optimizer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/allenarnoldy/gameday_optimizer/issues"
+  },
+  "homepage": "https://github.com/allenarnoldy/gameday_optimizer#readme"
+}
