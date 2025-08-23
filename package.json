@@ -1,14 +1,23 @@
 {
   "dependencies": {
+    "@expo/metro-runtime": "~3.2.3",
+    "expo": "^51.0.0",
     "expo-document-picker": "~13.1.6",
     "expo-file-system": "~18.1.11",
-    "react-native": "0.79.5"
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-web": "~0.20.0"
   },
   "name": "gameday_optimizer",
   "version": "1.0.0",
   "description": "build the perfect NFL Fantasy team using this site",
-  "main": "index.js",
-  "devDependencies": {},
+  "main": "index.ts",
+  "private": true,
+  "devDependencies": {
+    "@types/react": "^18.2.67",
+    "typescript": "~5.8.3"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "expo start",

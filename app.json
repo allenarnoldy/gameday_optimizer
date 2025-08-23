@@ -1,0 +1,7 @@
+{
+  "expo": {
+    "name": "gameday_optimizer",
+    "slug": "gameday-optimizer",
+    "platforms": ["ios", "android", "web"]
+  }
+}

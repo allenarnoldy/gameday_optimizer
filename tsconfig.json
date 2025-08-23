@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "esnext",
+    "jsx": "react",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "*": [
+        "./*"
+      ]
+    },
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "isolatedModules": true
+  },
+  "extends": "expo/tsconfig.base"
+}
