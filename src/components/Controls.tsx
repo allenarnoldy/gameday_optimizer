@@ -1,86 +1,131 @@
 import React from "react";
 import { View, Text, TextInput, Pressable, Switch } from "react-native";
-
+import { C } from "../theme";
 
 type Props = {
-season: number; setSeason: (n: number) => void;
-week: number; setWeek: (n: number) => void;
-scoring: "ppr" | "half" | "std"; setScoring: (s: "ppr"|"half"|"std") => void;
-cap: number; setCap: (n: number) => void;
-topN: number; setTopN: (n: number) => void;
-maxPerTeam: number | null; setMaxPerTeam: (n: number|null) => void;
-windowNoon: boolean; setWindowNoon: (b: boolean) => void;
-window3pm: boolean; setWindow3pm: (b: boolean) => void;
-onLoadDemo: () => void;
-onFetchSleeper: () => void;
-onFetchSchedule: () => void;
-onUpload: () => void;
+  season: number; setSeason: (n: number) => void;
+  week: number; setWeek: (n: number) => void;
+  scoring: "ppr" | "half" | "std"; setScoring: (s: "ppr" | "half" | "std") => void;
+  cap: number; setCap: (n: number) => void;
+  topN: number; setTopN: (n: number) => void;
+  maxPerTeam: number | null; setMaxPerTeam: (n: number | null) => void;
+  windowNoon: boolean; setWindowNoon: (b: boolean) => void;
+  window3pm: boolean; setWindow3pm: (b: boolean) => void;
 };
 
+function FieldLabel({ label }: { label: string }) {
+  return <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>{label}</Text>;
+}
+
+const inputStyle = {
+  borderWidth: 1.5, borderColor: C.border, borderRadius: 10,
+  padding: 10, fontSize: 15, color: C.text,
+} as const;
 
 export default function Controls(props: Props) {
-const { season, setSeason, week, setWeek, scoring, setScoring, cap, setCap, topN, setTopN, maxPerTeam, setMaxPerTeam, windowNoon, setWindowNoon, window3pm, setWindow3pm, onLoadDemo, onFetchSleeper, onFetchSchedule, onUpload } = props;
-return (
-<View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 12, gap: 8 }}>
-<Text style={{ fontWeight: "600", fontSize: 16 }}>1) Data Source</Text>
-<View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-<Pressable onPress={onLoadDemo} style={{ paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: 12 }}><Text>Load Demo</Text></Pressable>
-<Pressable onPress={onFetchSleeper} style={{ paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: 12 }}><Text>Sleeper (free)</Text></Pressable>
-<Pressable onPress={onUpload} style={{ paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: 12 }}><Text>Upload CSV/JSON</Text></Pressable>
-</View>
+  const {
+    season, setSeason, week, setWeek, scoring, setScoring,
+    cap, setCap, topN, setTopN, maxPerTeam, setMaxPerTeam,
+    windowNoon, setWindowNoon, window3pm, setWindow3pm,
+  } = props;
 
+  return (
+    <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 16, gap: 14, borderWidth: 1, borderColor: C.border }}>
 
-<View style={{ flexDirection: "row", gap: 12 }}>
-<View style={{ flex: 1 }}>
-<Text>Season</Text>
-<TextInput keyboardType="numeric" value={String(season)} onChangeText={(t) => setSeason(Number(t || 0))} style={{ borderWidth: 1, borderRadius: 8, padding: 8 }} />
-</View>
-<View style={{ flex: 1 }}>
-<Text>Week</Text>
-<TextInput keyboardType="numeric" value={String(week)} onChangeText={(t) => setWeek(Number(t || 0))} style={{ borderWidth: 1, borderRadius: 8, padding: 8 }} />
-</View>
-</View>
+      {/* Week / Season / Scoring row */}
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ width: 64 }}>
+          <FieldLabel label="Season" />
+          <TextInput
+            keyboardType="numeric"
+            value={String(season)}
+            onChangeText={t => setSeason(Number(t || 0))}
+            style={inputStyle}
+          />
+        </View>
+        <View style={{ width: 52 }}>
+          <FieldLabel label="Week" />
+          <TextInput
+            keyboardType="numeric"
+            value={String(week)}
+            onChangeText={t => setWeek(Number(t || 0))}
+            style={inputStyle}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <FieldLabel label="Scoring" />
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            {(["ppr", "half", "std"] as const).map(s => {
+              const active = scoring === s;
+              return (
+                <Pressable
+                  key={s}
+                  onPress={() => setScoring(s)}
+                  style={{
+                    flex: 1, paddingVertical: 9, borderRadius: 10,
+                    backgroundColor: active ? C.primary : C.card,
+                    borderWidth: 1.5, borderColor: active ? C.primary : C.border,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: active ? "#fff" : C.muted, fontWeight: "700", fontSize: 12, textTransform: "uppercase" }}>
+                    {s}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </View>
 
+      {/* Window toggles */}
+      <View style={{ flexDirection: "row", gap: 20, alignItems: "center" }}>
+        <Text style={{ fontSize: 12, fontWeight: "500", color: C.muted }}>Game window</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Switch value={windowNoon} onValueChange={setWindowNoon} trackColor={{ true: C.primary }} />
+          <Text style={{ color: C.text, fontWeight: "500" }}>Noon</Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Switch value={window3pm} onValueChange={setWindow3pm} trackColor={{ true: C.primary }} />
+          <Text style={{ color: C.text, fontWeight: "500" }}>3 PM</Text>
+        </View>
+      </View>
 
-<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-<Text>Scoring:</Text>
-<Pressable onPress={() => setScoring("ppr")} style={{ borderWidth: 1, borderRadius: 12, paddingVertical: 6, paddingHorizontal: 10 }}><Text>PPR</Text></Pressable>
-<Pressable onPress={() => setScoring("half")} style={{ borderWidth: 1, borderRadius: 12, paddingVertical: 6, paddingHorizontal: 10 }}><Text>Half</Text></Pressable>
-<Pressable onPress={() => setScoring("std")} style={{ borderWidth: 1, borderRadius: 12, paddingVertical: 6, paddingHorizontal: 10 }}><Text>Std</Text></Pressable>
-</View>
+      <View style={{ height: 1, backgroundColor: C.border }} />
 
+      {/* Cap / Top N / Max per team */}
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ flex: 1 }}>
+          <FieldLabel label="Salary Cap" />
+          <TextInput
+            keyboardType="numeric"
+            value={String(cap)}
+            onChangeText={t => setCap(Number(t || 0))}
+            style={inputStyle}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <FieldLabel label="Top Lineups" />
+          <TextInput
+            keyboardType="numeric"
+            value={String(topN)}
+            onChangeText={t => setTopN(Number(t || 0))}
+            style={inputStyle}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <FieldLabel label="Max / Team" />
+          <TextInput
+            keyboardType="numeric"
+            value={maxPerTeam == null ? "" : String(maxPerTeam)}
+            onChangeText={t => setMaxPerTeam(t === "" ? null : Number(t || 0))}
+            style={inputStyle}
+            placeholder="—"
+            placeholderTextColor={C.light}
+          />
+        </View>
+      </View>
 
-<Text style={{ fontWeight: "600", fontSize: 16, marginTop: 8 }}>2) Schedule & Slate</Text>
-<View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-<Pressable onPress={onFetchSchedule} style={{ paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: 12 }}><Text>Fetch Schedule</Text></Pressable>
-</View>
-<View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-<View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-<Switch value={windowNoon} onValueChange={setWindowNoon} />
-<Text>Noon</Text>
-</View>
-<View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-<Switch value={window3pm} onValueChange={setWindow3pm} />
-<Text>3 PM</Text>
-</View>
-</View>
-
-
-<Text style={{ fontWeight: "600", fontSize: 16, marginTop: 8 }}>3) Roster & Cap</Text>
-<View style={{ flexDirection: "row", gap: 12 }}>
-<View style={{ flex: 1 }}>
-<Text>Salary Cap</Text>
-<TextInput keyboardType="numeric" value={String(cap)} onChangeText={(t) => setCap(Number(t || 0))} style={{ borderWidth: 1, borderRadius: 8, padding: 8 }} />
-</View>
-<View style={{ flex: 1 }}>
-<Text>Top Lineups</Text>
-<TextInput keyboardType="numeric" value={String(topN)} onChangeText={(t) => setTopN(Number(t || 0))} style={{ borderWidth: 1, borderRadius: 8, padding: 8 }} />
-</View>
-</View>
-<View style={{ marginTop: 6 }}>
-<Text>Max per Team (optional)</Text>
-<TextInput keyboardType="numeric" value={maxPerTeam == null ? "" : String(maxPerTeam)} onChangeText={(t) => props.setMaxPerTeam(t === "" ? null : Number(t || 0))} style={{ borderWidth: 1, borderRadius: 8, padding: 8 }} />
-</View>
-</View>
-);
+    </View>
+  );
 }

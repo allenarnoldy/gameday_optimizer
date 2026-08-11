@@ -1,194 +1,255 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from "react-native";
-import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
-
-
-
 
 import { Player, RosterRule, Lineup } from "../types";
 import { DEMO_PLAYERS } from "../constants/demoPlayers";
-import { parseCSV } from "../utils/csv";
-import { labelWindowLocal, uniq } from "../utils/time";
+import { labelWindowLocal } from "../utils/time";
 import { fetchSleeperPlayers, fetchSleeperWeekProjections, mapSleeperToPlayers } from "../api/sleeper";
 import { fetchESPNWeekSchedule } from "../api/espn";
+import { fetchDKCurrentWeek } from "../api/draftkings";
+import { mergeProjectionsIntoDK } from "../utils/merge";
 import Controls from "../components/Controls";
-import PlayerList from "../components/PlayerList";
 import LineupCard from "../components/LineupCard";
+import PlayerPanel from "../components/PlayerPanel";
 import { buildTopLineups } from "../optimizer";
-
-
+import { C } from "../theme";
 
 export default function HomeScreen() {
-const [season, setSeason] = useState<number>(new Date().getFullYear());
-const [week, setWeek] = useState<number>(1);
-const [scoring, setScoring] = useState<"ppr" | "half" | "std">("ppr");
+  const [season, setSeason] = useState<number>(new Date().getFullYear());
+  const [week, setWeek] = useState<number>(1);
+  const [scoring, setScoring] = useState<"ppr" | "half" | "std">("ppr");
 
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState<string | null>("Loading current slate...");
+  const [panelOpen, setPanelOpen] = useState(false);
 
+  const [windowNoon, setWindowNoon] = useState(true);
+  const [window3pm, setWindow3pm] = useState(true);
+  const [lockedIds, setLockedIds] = useState<Set<string>>(new Set());
 
+  const [cap, setCap] = useState<number>(50000);
+  const [rules] = useState<RosterRule[]>([
+    { slot: "QB",   allow: ["QB"] },
+    { slot: "RB1",  allow: ["RB"] },
+    { slot: "RB2",  allow: ["RB"] },
+    { slot: "WR1",  allow: ["WR"] },
+    { slot: "WR2",  allow: ["WR"] },
+    { slot: "WR3",  allow: ["WR"] },
+    { slot: "TE",   allow: ["TE"] },
+    { slot: "FLEX", allow: ["RB", "WR", "TE"] },
+    { slot: "DST",  allow: ["DST"] },
+  ]);
+  const [maxPerTeam, setMaxPerTeam] = useState<number | null>(null);
+  const [topN, setTopN] = useState<number>(2);
+  const [lineups, setLineups] = useState<Lineup[] | null>(null);
 
-const [players, setPlayers] = useState<Player[]>([]);
-const [schedule, setSchedule] = useState<any[] | null>(null);
-const [loading, setLoading] = useState<string | null>(null);
+  const loadDemo = useCallback(() => {
+    setPlayers(DEMO_PLAYERS.map(p => ({ ...p, window: labelWindowLocal(p.gameTime) })));
+    setLineups(null);
+    setLockedIds(new Set());
+  }, []);
 
+  const fetchAll = useCallback(async () => {
+    setLoading("Loading current week's slate...");
+    setLockedIds(new Set());
+    setLineups(null);
+    try {
+      // Each source is independent — failures are non-fatal
+      const [dkResult, proj, allPlayers, evs] = await Promise.all([
+        fetchDKCurrentWeek().catch(() => null),
+        fetchSleeperWeekProjections(season, week).catch(() => [] as any[]),
+        fetchSleeperPlayers().catch(() => ({} as Record<string, any>)),
+        fetchESPNWeekSchedule(season, week).catch(() => [] as any[]),
+      ]);
 
+      // Build game-time map from ESPN schedule
+      const byTeam: Record<string, string> = {};
+      for (const ev of (evs ?? [])) {
+        const comps = ev?.competitions?.[0]?.competitors || [];
+        const start = ev.date || ev.startDate;
+        for (const c of comps) {
+          const abbr = c?.team?.abbreviation?.toUpperCase?.();
+          if (abbr && start) byTeam[abbr] = start;
+        }
+      }
 
+      const sleeperPlayers = mapSleeperToPlayers(proj ?? [], allPlayers ?? {}, null, scoring);
 
-const [windowNoon, setWindowNoon] = useState(true);
-const [window3pm, setWindow3pm] = useState(true);
+      // Use DK salaries if available, otherwise fall back to Sleeper-only
+      const basePlayers = dkResult?.players.length
+        ? mergeProjectionsIntoDK(dkResult.players, sleeperPlayers)
+        : sleeperPlayers;
 
+      const withTimes = basePlayers.map(p => {
+        const gameTime = byTeam[p.team] ?? p.gameTime;
+        return { ...p, gameTime, window: labelWindowLocal(gameTime) };
+      });
 
+      setPlayers(withTimes);
 
+      if (withTimes.length === 0) {
+        Alert.alert(
+          "No players loaded",
+          "Neither DraftKings nor Sleeper returned data for this week. The NFL season may not have started — try changing the week or loading demo data.",
+          [{ text: "Load Demo", onPress: loadDemo }, { text: "OK" }]
+        );
+      }
+    } catch (e: any) {
+      Alert.alert("Load failed", e?.message || String(e));
+    } finally {
+      setLoading(null);
+    }
+  }, [season, week, scoring]);
 
-const [cap, setCap] = useState<number>(50000);
-const [rules, setRules] = useState<RosterRule[]>([
-{ slot: "QB", allow: ["QB"] },
-{ slot: "RB1", allow: ["RB"] },
-{ slot: "RB2", allow: ["RB"] },
-{ slot: "WR1", allow: ["WR"] },
-{ slot: "WR2", allow: ["WR"] },
-{ slot: "WR3", allow: ["WR"] },
-{ slot: "TE", allow: ["TE"] },
-{ slot: "FLEX", allow: ["RB", "WR", "TE"] },
-{ slot: "DST", allow: ["DST"] },
-]);
-const [maxPerTeam, setMaxPerTeam] = useState<number | null>(null);
-const [topN, setTopN] = useState<number>(20);
-const [lineups, setLineups] = useState<Lineup[] | null>(null);
+  useEffect(() => { fetchAll(); }, []);
 
+  const filteredPlayers = useMemo(() => {
+    return players.filter(p => {
+      if (lockedIds.has(p.id)) return true;
+      const w = p.window || labelWindowLocal(p.gameTime);
+      if (w === "Noon") return windowNoon;
+      if (w === "3PM")  return window3pm;
+      return windowNoon || window3pm;
+    });
+  }, [players, windowNoon, window3pm, lockedIds]);
 
+  const toggleLock = (id: string) => {
+    setLockedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
+  const [generating, setGenerating] = useState(false);
 
-const scheduleTeams = useMemo(() => {
-if (!schedule) return [] as string[];
-const teams: string[] = [];
-for (const ev of schedule) {
-const comps = ev?.competitions?.[0]?.competitors || [];
-for (const c of comps) {
-const abbr = c?.team?.abbreviation?.toUpperCase?.();
-if (abbr) teams.push(abbr);
-}
-}
-return uniq(teams).sort();
-}, [schedule]);
+  const canGenerate = filteredPlayers.length > 0 && !generating;
 
+  const handleGenerate = () => {
+    if (!canGenerate) return;
+    setGenerating(true);
+    // Yield to the render cycle so the spinner appears before the synchronous DFS runs
+    setTimeout(() => {
+      const result = buildTopLineups(filteredPlayers, rules, cap, topN, maxPerTeam, lockedIds);
+      setLineups(result);
+      setGenerating(false);
+    }, 0);
+  };
 
+  return (
+    <>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} style={{ backgroundColor: C.bg }}>
 
-
-const filteredPlayers = useMemo(() => {
-  let xs = players.slice();
-
-  xs = xs.filter((p) => {
-    const w = p.window || labelWindowLocal(p.gameTime);
-    const noonOk = w === "Noon" && windowNoon;
-    const threeOk = w === "3PM" && window3pm;
-
-    if (noonOk || threeOk) return true;
-    if (w === "Other") return !windowNoon || !window3pm ? false : true;
-    return false;
-  });
-
-  return xs;
-}, [players, windowNoon, window3pm]);
-
-return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ fontSize: 22, fontWeight: "800" }}>NFL Weekly Fantasy Optimizer</Text>
-        {loading ? <ActivityIndicator /> : null}
-      </View>
-
-      <Controls
-        season={season} setSeason={setSeason}
-        week={week} setWeek={setWeek}
-        scoring={scoring} setScoring={setScoring}
-        cap={cap} setCap={setCap}
-        topN={topN} setTopN={setTopN}
-        maxPerTeam={maxPerTeam} setMaxPerTeam={setMaxPerTeam}
-        windowNoon={windowNoon} setWindowNoon={setWindowNoon}
-        window3pm={window3pm} setWindow3pm={setWindow3pm}
-        onLoadDemo={() => {
-          setPlayers(DEMO_PLAYERS.map((p) => ({ ...p, window: labelWindowLocal(p.gameTime) })));
-          setSchedule(null);
-          setLineups(null);
-        }}
-        onFetchSleeper={async () => {
-          setLoading("Fetching Sleeper projections + players...");
-          try {
-            const [proj, allPlayers] = await Promise.all([
-              fetchSleeperWeekProjections(season, week),
-              fetchSleeperPlayers(),
-            ]);
-            const mapped = mapSleeperToPlayers(proj, allPlayers, schedule, scoring);
-            setPlayers(mapped.map((p) => ({ ...p, window: p.window || labelWindowLocal(p.gameTime) })));
-            setLineups(null);
-          } catch (e: any) {
-            console.warn(e?.message || String(e));
-          } finally {
-            setLoading(null);
-          }
-        }}
-        onFetchSchedule={async () => {
-          setLoading("Fetching ESPN schedule...");
-          try {
-            const evs = await fetchESPNWeekSchedule(season, week);
-            setSchedule(evs);
-            if (players.length) {
-              const byTeam: Record<string, { time: string }> = {};
-              for (const ev of evs) {
-                const comps = ev?.competitions?.[0]?.competitors || [];
-                const start = ev.date || ev.startDate;
-                for (const c of comps) {
-                  const abbr = c?.team?.abbreviation?.toUpperCase?.();
-                  if (abbr) byTeam[abbr] = { time: start };
-                }
+        {/* Header */}
+        <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <View>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: C.primary, letterSpacing: 1.5, marginBottom: 2 }}>NFL DAILY FANTASY</Text>
+              <Text style={{ fontSize: 26, fontWeight: "800", color: C.text }}>Gameday Optimizer</Text>
+            </View>
+            <Pressable
+              onPress={fetchAll}
+              disabled={!!loading}
+              style={({ pressed }) => ({
+                width: 42, height: 42, borderRadius: 21,
+                backgroundColor: loading ? C.primaryBg : (pressed ? C.primaryBg : C.card),
+                borderWidth: 1.5, borderColor: loading ? C.primary : C.border,
+                alignItems: "center", justifyContent: "center",
+              })}
+            >
+              {loading
+                ? <ActivityIndicator color={C.primary} />
+                : <Text style={{ fontSize: 18 }}>↺</Text>
               }
-              setPlayers((prev) =>
-                prev.map((p) => {
-                  const t = byTeam[p.team];
-                  const gameTime = t?.time || p.gameTime;
-                  return { ...p, gameTime, window: labelWindowLocal(gameTime) };
-                })
-              );
-            }
-          } catch (e: any) {
-            console.warn(e?.message || String(e));
-          } finally {
-            setLoading(null);
-          }
-        }}
-        onUpload={() => {
-          // hook up DocumentPicker later; placeholder for now
-          setPlayers(DEMO_PLAYERS.map((p) => ({ ...p, window: labelWindowLocal(p.gameTime) })));
-        }}
-      />
-
-      <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-        <Pressable
-          onPress={() => {
-            if (!filteredPlayers.length) return;
-            const ls = buildTopLineups(filteredPlayers, rules, cap, topN, maxPerTeam);
-            setLineups(ls);
-          }}
-          style={{ paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1, borderRadius: 12, backgroundColor: "#22c55e" }}
-        >
-          <Text style={{ color: "#fff", fontWeight: "700" }}>Generate Optimal Lineups</Text>
-        </Pressable>
-        <Text style={{ opacity: 0.7 }}>
-          {filteredPlayers.length} players loaded · {schedule ? `${scheduleTeams.length} teams` : "no schedule yet"}
-        </Text>
-      </View>
-
-      {!!filteredPlayers.length && <PlayerList players={filteredPlayers} />}
-
-      {lineups && (
-        <View style={{ gap: 10 }}>
-          <Text style={{ fontWeight: "700", fontSize: 16 }}>Top {lineups.length} Lineups</Text>
-          {lineups.map((lu, i) => (
-            <LineupCard key={i} lu={lu} index={i} />
-          ))}
+            </Pressable>
+          </View>
+          {loading && (
+            <Text style={{ color: C.muted, fontSize: 13, marginTop: 8 }}>{loading}</Text>
+          )}
         </View>
-      )}
-    </ScrollView>
+
+        <Controls
+          season={season} setSeason={setSeason}
+          week={week} setWeek={setWeek}
+          scoring={scoring} setScoring={setScoring}
+          cap={cap} setCap={setCap}
+          topN={topN} setTopN={setTopN}
+          maxPerTeam={maxPerTeam} setMaxPerTeam={setMaxPerTeam}
+          windowNoon={windowNoon} setWindowNoon={setWindowNoon}
+          window3pm={window3pm} setWindow3pm={setWindow3pm}
+        />
+
+        {/* Action row */}
+        <View style={{ gap: 10 }}>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Pressable
+              onPress={handleGenerate}
+              style={({ pressed }) => ({
+                flex: 1, paddingVertical: 15, borderRadius: 16,
+                backgroundColor: canGenerate ? (pressed ? C.primaryDark : C.primary) : '#cbd5e1',
+                alignItems: "center", justifyContent: "center",
+              })}
+            >
+              {generating
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16, letterSpacing: 0.3 }}>Generate Optimal Lineups</Text>
+              }
+            </Pressable>
+
+            <Pressable
+              onPress={() => setPanelOpen(true)}
+              style={({ pressed }) => ({
+                paddingVertical: 15, paddingHorizontal: 16, borderRadius: 16,
+                borderWidth: 1.5, borderColor: C.border,
+                backgroundColor: pressed ? "#f1f5f9" : C.card,
+                alignItems: "center", justifyContent: "center", gap: 2,
+              })}
+            >
+              <Text style={{ fontSize: 18 }}>👥</Text>
+              {filteredPlayers.length > 0 && (
+                <Text style={{ fontSize: 11, fontWeight: "700", color: C.muted }}>
+                  {filteredPlayers.length}{lockedIds.size > 0 ? ` · 🔒${lockedIds.size}` : ""}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: 20 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: canGenerate ? C.primary : C.light }} />
+              <Text style={{ color: C.muted, fontSize: 13 }}>{filteredPlayers.length} players</Text>
+            </View>
+            {lockedIds.size > 0 && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: C.primary }} />
+                <Text style={{ color: C.muted, fontSize: 13 }}>{lockedIds.size} locked</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {lineups && (
+          <View style={{ gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+              <Text style={{ fontWeight: "700", fontSize: 15, color: C.text }}>Top {lineups.length} Lineups</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+            </View>
+            {lineups.map((lu, i) => (
+              <LineupCard key={i} lu={lu} index={i} />
+            ))}
+          </View>
+        )}
+
+      </ScrollView>
+
+      <PlayerPanel
+        visible={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        players={filteredPlayers}
+        lockedIds={lockedIds}
+        onToggleLock={toggleLock}
+      />
+    </>
   );
 }

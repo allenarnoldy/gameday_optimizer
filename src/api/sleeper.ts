@@ -51,12 +51,20 @@ const pickPts = (o: any) => (scoring === "ppr" ? o?.stats?.pts_ppr ?? o?.pts ?? 
 
 const out: Player[] = [];
 for (const p of projections) {
-const pid = p.player_id || p.player?.id || p.playerId || p.id;
+const pid = p.player_id || p.player?.player_id || p.playerId || p.id;
 const meta = playersById?.[pid];
-const team = (meta?.team || p.team || "").toUpperCase();
-const pos = String(meta?.position || p.position || "").toUpperCase() as Position;
+const team = (meta?.team || p.player?.team || p.team || "").toUpperCase();
+const posRaw = String(
+  meta?.position || p.player?.position || p.player?.fantasy_positions?.[0] || p.position || ""
+).toUpperCase();
+const pos = (posRaw === "DEF" ? "DST" : posRaw) as Position;
 if (!team || !pos) continue;
-const name = meta?.full_name || meta?.name || (meta?.first_name && meta?.last_name ? `${meta.first_name} ${meta.last_name}` : p.player?.name || p.name || pid);
+const name =
+  meta?.full_name ||
+  meta?.name ||
+  (meta?.first_name && meta?.last_name ? `${meta.first_name} ${meta.last_name}` : null) ||
+  (p.player?.first_name && p.player?.last_name ? `${p.player.first_name} ${p.player.last_name}` : null) ||
+  p.player?.name || p.name || pid;
 const proj = Number(pickPts(p));
 if (!proj || Number.isNaN(proj)) continue;
 
@@ -66,7 +74,7 @@ const gameTime = sched?.time;
 const window = labelWindowLocal(gameTime);
 
 
-out.push({ id: String(pid), name, team, pos, proj, opp: sched?.opp, gameId: sched?.id, gameTime, window });
+out.push({ id: String(pid), name, team, pos, proj, projSource: "Sleeper", opp: sched?.opp, gameId: sched?.id, gameTime, window });
 }
 return out;
 }
