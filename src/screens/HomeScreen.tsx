@@ -4,6 +4,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from "rea
 import { Player, RosterRule, Lineup } from "../types";
 import { DEMO_PLAYERS } from "../constants/demoPlayers";
 import { labelWindowLocal } from "../utils/time";
+import { getCurrentNFLWeek } from "../utils/nflWeek";
 import { fetchSleeperPlayers, fetchSleeperWeekProjections, mapSleeperToPlayers } from "../api/sleeper";
 import { fetchESPNWeekSchedule } from "../api/espn";
 import { fetchDKCurrentWeek } from "../api/draftkings";
@@ -15,8 +16,7 @@ import { buildTopLineups } from "../optimizer";
 import { C } from "../theme";
 
 export default function HomeScreen() {
-  const [season, setSeason] = useState<number>(new Date().getFullYear());
-  const [week, setWeek] = useState<number>(1);
+  const { season, week } = getCurrentNFLWeek();
   const [scoring, setScoring] = useState<"ppr" | "half" | "std">("ppr");
 
   const [players, setPlayers] = useState<Player[]>([]);
@@ -99,7 +99,7 @@ export default function HomeScreen() {
     } finally {
       setLoading(null);
     }
-  }, [season, week, scoring]);
+  }, [scoring]);
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -169,8 +169,6 @@ export default function HomeScreen() {
         </View>
 
         <Controls
-          season={season} setSeason={setSeason}
-          week={week} setWeek={setWeek}
           scoring={scoring} setScoring={setScoring}
           cap={cap} setCap={setCap}
           topN={topN} setTopN={setTopN}
@@ -232,7 +230,7 @@ export default function HomeScreen() {
           <View style={{ gap: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
-              <Text style={{ fontWeight: "700", fontSize: 15, color: C.text }}>Top {lineups.length} Lineups</Text>
+              <Text style={{ fontWeight: "700", fontSize: 15, color: C.text }}>Top lineups for Week {week}</Text>
               <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
             </View>
             {lineups.map((lu, i) => (

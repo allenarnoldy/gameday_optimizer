@@ -3,8 +3,6 @@ import { View, Text, TextInput, Pressable, Switch } from "react-native";
 import { C } from "../theme";
 
 type Props = {
-  season: number; setSeason: (n: number) => void;
-  week: number; setWeek: (n: number) => void;
   scoring: "ppr" | "half" | "std"; setScoring: (s: "ppr" | "half" | "std") => void;
   cap: number; setCap: (n: number) => void;
   topN: number; setTopN: (n: number) => void;
@@ -24,7 +22,7 @@ const inputStyle = {
 
 export default function Controls(props: Props) {
   const {
-    season, setSeason, week, setWeek, scoring, setScoring,
+    scoring, setScoring,
     cap, setCap, topN, setTopN, maxPerTeam, setMaxPerTeam,
     windowNoon, setWindowNoon, window3pm, setWindow3pm,
   } = props;
@@ -32,49 +30,29 @@ export default function Controls(props: Props) {
   return (
     <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 16, gap: 14, borderWidth: 1, borderColor: C.border }}>
 
-      {/* Week / Season / Scoring row */}
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <View style={{ width: 64 }}>
-          <FieldLabel label="Season" />
-          <TextInput
-            keyboardType="numeric"
-            value={String(season)}
-            onChangeText={t => setSeason(Number(t || 0))}
-            style={inputStyle}
-          />
-        </View>
-        <View style={{ width: 52 }}>
-          <FieldLabel label="Week" />
-          <TextInput
-            keyboardType="numeric"
-            value={String(week)}
-            onChangeText={t => setWeek(Number(t || 0))}
-            style={inputStyle}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <FieldLabel label="Scoring" />
-          <View style={{ flexDirection: "row", gap: 6 }}>
-            {(["ppr", "half", "std"] as const).map(s => {
-              const active = scoring === s;
-              return (
-                <Pressable
-                  key={s}
-                  onPress={() => setScoring(s)}
-                  style={{
-                    flex: 1, paddingVertical: 9, borderRadius: 10,
-                    backgroundColor: active ? C.primary : C.card,
-                    borderWidth: 1.5, borderColor: active ? C.primary : C.border,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={{ color: active ? "#fff" : C.muted, fontWeight: "700", fontSize: 12, textTransform: "uppercase" }}>
-                    {s}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+      {/* Scoring row */}
+      <View>
+        <FieldLabel label="Scoring" />
+        <View style={{ flexDirection: "row", gap: 6 }}>
+          {(["ppr", "half", "std"] as const).map(s => {
+            const active = scoring === s;
+            return (
+              <Pressable
+                key={s}
+                onPress={() => setScoring(s)}
+                style={{
+                  flex: 1, paddingVertical: 9, borderRadius: 10,
+                  backgroundColor: active ? C.primary : C.card,
+                  borderWidth: 1.5, borderColor: active ? C.primary : C.border,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: active ? "#fff" : C.muted, fontWeight: "700", fontSize: 12, textTransform: "uppercase" }}>
+                  {s}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 

@@ -23,12 +23,19 @@ export function mergeProjectionsIntoDK(dkPlayers: Player[], projPlayers: Player[
     if (p.pos === "DST") byTeamDST.set(p.team, p);
   }
 
+  // Max realistic single-week PPR score — anything above this is a season total
+  const WEEKLY_MAX = 60;
+
   return dkPlayers.map(dk => {
     const match =
       dk.pos === "DST"
         ? byTeamDST.get(dk.team)
         : byName.get(normalize(dk.name));
 
-    return match ? { ...dk, proj: match.proj, projSource: "Sleeper" } : dk;
+    if (match && match.proj <= WEEKLY_MAX) {
+      return { ...dk, proj: match.proj, projSource: "Sleeper" as const };
+    }
+    // Sleeper has season totals instead of weekly projections (preseason) — use DK avg
+    return dk;
   });
 }
