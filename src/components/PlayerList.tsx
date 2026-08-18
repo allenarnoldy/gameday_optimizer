@@ -1,11 +1,12 @@
 import React from "react";
 import { View, Text, FlatList } from "react-native";
 import { Player } from "../types";
-import { C, POS } from "../theme";
+import { useTheme } from "../ThemeContext";
 import { currency } from "../utils/time";
 
 function PosBadge({ pos }: { pos: string }) {
-  const colors = POS[pos] ?? { bg: '#f1f5f9', fg: C.muted };
+  const { C, POS } = useTheme();
+  const colors = POS[pos] ?? { bg: C.border, fg: C.muted };
   return (
     <View style={{ backgroundColor: colors.bg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, minWidth: 34, alignItems: "center" }}>
       <Text style={{ color: colors.fg, fontWeight: "700", fontSize: 11 }}>{pos}</Text>
@@ -14,9 +15,10 @@ function PosBadge({ pos }: { pos: string }) {
 }
 
 export default function PlayerList({ players }: { players: Player[] }) {
+  const { C } = useTheme();
   return (
     <View style={{ backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
-      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: C.border }}>
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border }}>
         <Text style={{ flex: 1, fontSize: 12, fontWeight: "700", color: C.muted, letterSpacing: 0.5 }}>PLAYER ({players.length})</Text>
         <Text style={{ width: 72, textAlign: "right", fontSize: 12, fontWeight: "700", color: C.muted, letterSpacing: 0.5 }}>SALARY</Text>
         <Text style={{ width: 54, textAlign: "right", fontSize: 12, fontWeight: "700", color: C.muted, letterSpacing: 0.5 }}>PROJ</Text>
@@ -29,7 +31,7 @@ export default function PlayerList({ players }: { players: Player[] }) {
           <View style={{
             flexDirection: "row", alignItems: "center",
             paddingHorizontal: 14, paddingVertical: 10,
-            backgroundColor: index % 2 === 0 ? C.card : '#f8fafc',
+            backgroundColor: index % 2 === 0 ? C.card : C.bg,
             borderBottomWidth: 1, borderBottomColor: C.border,
           }}>
             <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>

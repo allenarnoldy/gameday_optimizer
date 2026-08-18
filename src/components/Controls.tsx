@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TextInput, Pressable, Switch } from "react-native";
-import { C } from "../theme";
+import { useTheme } from "../ThemeContext";
 
 type Props = {
   scoring: "ppr" | "half" | "std"; setScoring: (s: "ppr" | "half" | "std") => void;
@@ -11,28 +11,25 @@ type Props = {
   window3pm: boolean; setWindow3pm: (b: boolean) => void;
 };
 
-function FieldLabel({ label }: { label: string }) {
-  return <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>{label}</Text>;
-}
-
-const inputStyle = {
-  borderWidth: 1.5, borderColor: C.border, borderRadius: 10,
-  padding: 10, fontSize: 15, color: C.text,
-} as const;
-
 export default function Controls(props: Props) {
+  const { C } = useTheme();
   const {
     scoring, setScoring,
     cap, setCap, topN, setTopN, maxPerTeam, setMaxPerTeam,
     windowNoon, setWindowNoon, window3pm, setWindow3pm,
   } = props;
 
+  const inputStyle = {
+    borderWidth: 1.5, borderColor: C.border, borderRadius: 10,
+    padding: 10, fontSize: 15, color: C.text, backgroundColor: C.card,
+  } as const;
+
   return (
     <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 16, gap: 14, borderWidth: 1, borderColor: C.border }}>
 
       {/* Scoring row */}
       <View>
-        <FieldLabel label="Scoring" />
+        <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>Scoring</Text>
         <View style={{ flexDirection: "row", gap: 6 }}>
           {(["ppr", "half", "std"] as const).map(s => {
             const active = scoring === s;
@@ -74,7 +71,7 @@ export default function Controls(props: Props) {
       {/* Cap / Top N / Max per team */}
       <View style={{ flexDirection: "row", gap: 10 }}>
         <View style={{ flex: 1 }}>
-          <FieldLabel label="Salary Cap" />
+          <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>Salary Cap</Text>
           <TextInput
             keyboardType="numeric"
             value={String(cap)}
@@ -83,7 +80,7 @@ export default function Controls(props: Props) {
           />
         </View>
         <View style={{ flex: 1 }}>
-          <FieldLabel label="Top Lineups" />
+          <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>Top Lineups</Text>
           <TextInput
             keyboardType="numeric"
             value={String(topN)}
@@ -92,7 +89,7 @@ export default function Controls(props: Props) {
           />
         </View>
         <View style={{ flex: 1 }}>
-          <FieldLabel label="Max / Team" />
+          <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>Max / Team</Text>
           <TextInput
             keyboardType="numeric"
             value={maxPerTeam == null ? "" : String(maxPerTeam)}

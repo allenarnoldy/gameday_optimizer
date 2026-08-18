@@ -13,9 +13,10 @@ import Controls from "../components/Controls";
 import LineupCard from "../components/LineupCard";
 import PlayerPanel from "../components/PlayerPanel";
 import { buildTopLineups } from "../optimizer";
-import { C } from "../theme";
+import { useTheme } from "../ThemeContext";
 
 export default function HomeScreen() {
+  const { C, isDark, toggle } = useTheme();
   const { season, week } = getCurrentNFLWeek();
   const [scoring, setScoring] = useState<"ppr" | "half" | "std">("ppr");
 
@@ -54,7 +55,6 @@ export default function HomeScreen() {
     setLockedIds(new Set());
     setLineups(null);
     try {
-      // Each source is independent — failures are non-fatal
       const [dkResult, proj, allPlayers, evs] = await Promise.all([
         fetchDKCurrentWeek().catch(() => null),
         fetchSleeperWeekProjections(season, week).catch(() => [] as any[]),
@@ -62,7 +62,6 @@ export default function HomeScreen() {
         fetchESPNWeekSchedule(season, week).catch(() => [] as any[]),
       ]);
 
-      // Build game-time map from ESPN schedule
       const byTeam: Record<string, string> = {};
       for (const ev of (evs ?? [])) {
         const comps = ev?.competitions?.[0]?.competitors || [];
@@ -75,7 +74,6 @@ export default function HomeScreen() {
 
       const sleeperPlayers = mapSleeperToPlayers(proj ?? [], allPlayers ?? {}, null, scoring);
 
-      // Use DK salaries if available, otherwise fall back to Sleeper-only
       const basePlayers = dkResult?.players.length
         ? mergeProjectionsIntoDK(dkResult.players, sleeperPlayers)
         : sleeperPlayers;
@@ -90,7 +88,7 @@ export default function HomeScreen() {
       if (withTimes.length === 0) {
         Alert.alert(
           "No players loaded",
-          "Neither DraftKings nor Sleeper returned data for this week. The NFL season may not have started — try changing the week or loading demo data.",
+          "Neither DraftKings nor Sleeper returned data for this week. The NFL season may not have started — loading demo data.",
           [{ text: "Load Demo", onPress: loadDemo }, { text: "OK" }]
         );
       }
@@ -122,13 +120,11 @@ export default function HomeScreen() {
   };
 
   const [generating, setGenerating] = useState(false);
-
   const canGenerate = filteredPlayers.length > 0 && !generating;
 
   const handleGenerate = () => {
     if (!canGenerate) return;
     setGenerating(true);
-    // Yield to the render cycle so the spinner appears before the synchronous DFS runs
     setTimeout(() => {
       const result = buildTopLineups(filteredPlayers, rules, cap, topN, maxPerTeam, lockedIds);
       setLineups(result);
@@ -147,21 +143,37 @@ export default function HomeScreen() {
               <Text style={{ fontSize: 11, fontWeight: "700", color: C.primary, letterSpacing: 1.5, marginBottom: 2 }}>NFL DAILY FANTASY</Text>
               <Text style={{ fontSize: 26, fontWeight: "800", color: C.text }}>Gameday Optimizer</Text>
             </View>
-            <Pressable
-              onPress={fetchAll}
-              disabled={!!loading}
-              style={({ pressed }) => ({
-                width: 42, height: 42, borderRadius: 21,
-                backgroundColor: loading ? C.primaryBg : (pressed ? C.primaryBg : C.card),
-                borderWidth: 1.5, borderColor: loading ? C.primary : C.border,
-                alignItems: "center", justifyContent: "center",
-              })}
-            >
-              {loading
-                ? <ActivityIndicator color={C.primary} />
-                : <Text style={{ fontSize: 18 }}>↺</Text>
-              }
-            </Pressable>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {/* Dark mode toggle */}
+              <Pressable
+                onPress={toggle}
+                style={({ pressed }) => ({
+                  width: 42, height: 42, borderRadius: 21,
+                  backgroundColor: pressed ? C.primaryBg : C.card,
+                  borderWidth: 1.5, borderColor: C.border,
+                  alignItems: "center", justifyContent: "center",
+                })}
+              >
+                <Text style={{ fontSize: 18 }}>{isDark ? "☀️" : "🌙"}</Text>
+              </Pressable>
+
+              {/* Refresh */}
+              <Pressable
+                onPress={fetchAll}
+                disabled={!!loading}
+                style={({ pressed }) => ({
+                  width: 42, height: 42, borderRadius: 21,
+                  backgroundColor: loading ? C.primaryBg : (pressed ? C.primaryBg : C.card),
+                  borderWidth: 1.5, borderColor: loading ? C.primary : C.border,
+                  alignItems: "center", justifyContent: "center",
+                })}
+              >
+                {loading
+                  ? <ActivityIndicator color={C.primary} />
+                  : <Text style={{ fontSize: 18 }}>↺</Text>
+                }
+              </Pressable>
+            </View>
           </View>
           {loading && (
             <Text style={{ color: C.muted, fontSize: 13, marginTop: 8 }}>{loading}</Text>
@@ -184,7 +196,7 @@ export default function HomeScreen() {
               onPress={handleGenerate}
               style={({ pressed }) => ({
                 flex: 1, paddingVertical: 15, borderRadius: 16,
-                backgroundColor: canGenerate ? (pressed ? C.primaryDark : C.primary) : '#cbd5e1',
+                backgroundColor: canGenerate ? (pressed ? C.primaryDark : C.primary) : C.border,
                 alignItems: "center", justifyContent: "center",
               })}
             >
@@ -199,7 +211,7 @@ export default function HomeScreen() {
               style={({ pressed }) => ({
                 paddingVertical: 15, paddingHorizontal: 16, borderRadius: 16,
                 borderWidth: 1.5, borderColor: C.border,
-                backgroundColor: pressed ? "#f1f5f9" : C.card,
+                backgroundColor: pressed ? C.bg : C.card,
                 alignItems: "center", justifyContent: "center", gap: 2,
               })}
             >

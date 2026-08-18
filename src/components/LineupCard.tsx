@@ -1,11 +1,12 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Lineup } from "../types";
-import { C, POS, RANK } from "../theme";
+import { useTheme } from "../ThemeContext";
 import { currency } from "../utils/time";
 
 function PosBadge({ pos }: { pos: string }) {
-  const colors = POS[pos] ?? { bg: '#f1f5f9', fg: C.muted };
+  const { POS, C } = useTheme();
+  const colors = POS[pos] ?? { bg: C.border, fg: C.muted };
   return (
     <View style={{ backgroundColor: colors.bg, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, minWidth: 38, alignItems: "center" }}>
       <Text style={{ color: colors.fg, fontWeight: "700", fontSize: 11 }}>{pos}</Text>
@@ -14,9 +15,10 @@ function PosBadge({ pos }: { pos: string }) {
 }
 
 export default function LineupCard({ lu, index }: { lu: Lineup; index: number }) {
+  const { C, RANK } = useTheme();
   const rank = RANK[index];
   const borderColor = rank?.color ?? C.border;
-  const headerBg = rank?.bg ?? '#f8fafc';
+  const headerBg = rank?.bg ?? C.card;
   const slots = Object.entries(lu.slots);
 
   return (

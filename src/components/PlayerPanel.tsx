@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { Modal, View, Text, Pressable, FlatList, SafeAreaView } from "react-native";
 import { Player } from "../types";
-import { C, POS } from "../theme";
+import { ColorSet, PosColors } from "../theme";
+import { useTheme } from "../ThemeContext";
 import { currency } from "../utils/time";
 
 const POSITIONS = ["All", "QB", "RB", "WR", "TE", "DST"] as const;
 type PosFilter = typeof POSITIONS[number];
 
-function PosBadge({ pos }: { pos: string }) {
-  const colors = POS[pos] ?? { bg: '#f1f5f9', fg: C.muted };
+function PosBadge({ pos, POS, C }: { pos: string; POS: PosColors; C: ColorSet }) {
+  const colors = POS[pos] ?? { bg: C.border, fg: C.muted };
   return (
     <View style={{ backgroundColor: colors.bg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, minWidth: 34, alignItems: "center" }}>
       <Text style={{ color: colors.fg, fontWeight: "700", fontSize: 11 }}>{pos}</Text>
@@ -16,7 +17,7 @@ function PosBadge({ pos }: { pos: string }) {
   );
 }
 
-function Checkbox({ checked }: { checked: boolean }) {
+function Checkbox({ checked, C }: { checked: boolean; C: ColorSet }) {
   return (
     <View style={{
       width: 20, height: 20, borderRadius: 5,
@@ -39,6 +40,7 @@ type Props = {
 };
 
 export default function PlayerPanel({ visible, onClose, players, lockedIds, onToggleLock }: Props) {
+  const { C, POS } = useTheme();
   const [posFilter, setPosFilter] = useState<PosFilter>("All");
 
   const filtered = (posFilter === "All" ? players : players.filter(p => p.pos === posFilter))
@@ -50,14 +52,14 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
   return (
     <Modal visible={visible} transparent animationType="fade">
       <Pressable
-        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)" }}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)" }}
         onPress={onClose}
       />
 
       <View style={{
         position: "absolute", right: 0, top: 0, bottom: 0, width: 340,
         backgroundColor: C.card,
-        shadowColor: "#000", shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 20,
+        shadowColor: "#000", shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.2, shadowRadius: 20,
         elevation: 10,
       }}>
         <SafeAreaView style={{ flex: 1 }}>
@@ -73,7 +75,7 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
               </View>
               <Pressable
                 onPress={onClose}
-                style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#f1f5f9", alignItems: "center", justifyContent: "center" }}
+                style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" }}
               >
                 <Text style={{ fontSize: 16, color: C.muted, fontWeight: "600" }}>✕</Text>
               </Pressable>
@@ -90,7 +92,7 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
                     onPress={() => setPosFilter(pos)}
                     style={{
                       paddingVertical: 5, paddingHorizontal: 12, borderRadius: 16,
-                      backgroundColor: active ? (colors ? colors.bg : C.primaryBg) : "#f8fafc",
+                      backgroundColor: active ? (colors ? colors.bg : C.primaryBg) : C.bg,
                       borderWidth: 1.5,
                       borderColor: active ? (colors ? colors.fg : C.primary) : C.border,
                     }}
@@ -105,7 +107,7 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
           </View>
 
           {/* Column headers */}
-          <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#f8fafc", borderBottomWidth: 1, borderBottomColor: C.border }}>
+          <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border }}>
             <View style={{ width: 20 }} />
             <View style={{ width: 34, marginLeft: 8 }} />
             <Text style={{ flex: 1, fontSize: 11, fontWeight: "700", color: C.muted, marginLeft: 8, letterSpacing: 0.5 }}>PLAYER</Text>
@@ -125,13 +127,13 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
                   style={{
                     flexDirection: "row", alignItems: "center",
                     paddingHorizontal: 14, paddingVertical: 10,
-                    backgroundColor: locked ? C.primaryBg : (index % 2 === 0 ? C.card : "#f8fafc"),
+                    backgroundColor: locked ? C.primaryBg : (index % 2 === 0 ? C.card : C.bg),
                     borderBottomWidth: 1, borderBottomColor: C.border,
                   }}
                 >
-                  <Checkbox checked={locked} />
+                  <Checkbox checked={locked} C={C} />
                   <View style={{ marginLeft: 8 }}>
-                    <PosBadge pos={item.pos} />
+                    <PosBadge pos={item.pos} POS={POS} C={C} />
                   </View>
                   <View style={{ flex: 1, marginLeft: 8 }}>
                     <Text style={{ fontWeight: locked ? "700" : "600", color: C.text, fontSize: 13 }} numberOfLines={1}>

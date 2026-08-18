@@ -23,8 +23,11 @@ function buildCandidateSlots(players: Player[], rules: RosterRule[]): Player[][]
           .slice(0, 8);
         const merged: Record<string, Player> = {};
         for (const p of [...byProj, ...byValue]) merged[p.id] = p;
+        // Sort by projection so DFS explores high-proj (high-salary) players first.
+        // This also makes upperBound() accurate: it picks the first available player
+        // per slot, which will be the highest-projection option when sorted this way.
         candidates = Object.values(merged)
-          .sort((a, b) => (b.proj / (b.salary || 1)) - (a.proj / (a.salary || 1)));
+          .sort((a, b) => b.proj - a.proj);
       }
       byPos[pos] = candidates;
     }
@@ -36,7 +39,7 @@ function buildCandidateSlots(players: Player[], rules: RosterRule[]): Player[][]
       for (const pl of (byPos[pos] ?? [])) merged[pl.id] = pl;
     }
     return Object.values(merged)
-      .sort((a, b) => (b.proj / (b.salary || 1)) - (a.proj / (a.salary || 1)));
+      .sort((a, b) => b.proj - a.proj);
   });
 }
 
