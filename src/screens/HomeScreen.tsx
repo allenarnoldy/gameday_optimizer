@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, useWindowDimensions } from "react-native";
 
 import { Player, RosterRule, Lineup } from "../types";
 import { DEMO_PLAYERS } from "../constants/demoPlayers";
@@ -18,6 +18,8 @@ import { useTheme } from "../ThemeContext";
 export default function HomeScreen() {
   const { C, isDark, toggle } = useTheme();
   const { season, week } = getCurrentNFLWeek();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const [scoring, setScoring] = useState<"ppr" | "half" | "std">("ppr");
 
   const [players, setPlayers] = useState<Player[]>([]);
@@ -134,7 +136,15 @@ export default function HomeScreen() {
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} style={{ backgroundColor: C.bg }}>
+      <ScrollView
+        style={{ backgroundColor: C.bg }}
+        contentContainerStyle={{
+          alignItems: "center",
+          paddingVertical: 16,
+          paddingHorizontal: isDesktop ? 24 : 16,
+        }}
+      >
+        <View style={{ width: "100%", maxWidth: 720, gap: 16 }}>
 
         {/* Header */}
         <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border }}>
@@ -251,6 +261,7 @@ export default function HomeScreen() {
           </View>
         )}
 
+        </View>
       </ScrollView>
 
       <PlayerPanel
