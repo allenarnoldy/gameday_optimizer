@@ -4,7 +4,7 @@ import { Lineup } from "../types";
 import { useTheme } from "../ThemeContext";
 import { currency } from "../utils/time";
 import { radius, space, type as T, floatShadow } from "../theme";
-import { PosBadge, gradient, VIOLET_WASH } from "./ui";
+import { PosBadge, gradient, BLUE_WASH } from "./ui";
 import { tnum } from "../fonts";
 
 export default function LineupCard({ lu, index }: { lu: Lineup; index: number }) {
@@ -15,7 +15,7 @@ export default function LineupCard({ lu, index }: { lu: Lineup; index: number })
   // through surface lift, which is how Framer carries hierarchy.
   const isTop = index === 0;
   const headerStyle = isTop
-    ? gradient(VIOLET_WASH, C.gradViolet)
+    ? gradient(BLUE_WASH, C.primary)
     : { backgroundColor: C.surface2 };
   const headerInk = isTop ? "#ffffff" : C.ink;
   const headerInkMuted = isTop ? "rgba(255,255,255,0.72)" : C.inkMuted;

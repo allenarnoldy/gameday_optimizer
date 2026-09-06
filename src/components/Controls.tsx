@@ -25,8 +25,9 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Pill toggle. Selected state is a surface lift (canvas -> surface2), never a
- * chromatic fill — the spec's pricing-tab pattern.
+ * Pill toggle. The spec marks selection with a surface lift, but on a
+ * near-black canvas that reads as "slightly darker black" — the on-state has
+ * to be unmistakable in a tool, so it takes the accent fill.
  */
 function TabPill({
   label, active, onPress, flex,
@@ -43,13 +44,19 @@ function TabPill({
         minHeight: 40,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: active ? C.surface2 : "transparent",
-        borderWidth: 1,
-        borderColor: active ? C.hairline : "transparent",
+        backgroundColor: active ? C.primary : "transparent",
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
-      <Text style={{ ...T.button, color: active ? C.ink : C.inkMuted } as TextStyle}>{label}</Text>
+      <Text
+        style={{
+          ...T.button,
+          fontWeight: active ? "600" : "500",
+          color: active ? C.onPrimary : C.inkMuted,
+        } as TextStyle}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }

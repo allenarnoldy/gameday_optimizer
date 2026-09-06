@@ -117,13 +117,19 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
                     paddingVertical: 7,
                     paddingHorizontal: 13,
                     borderRadius: radius.pill,
-                    backgroundColor: active ? C.surface2 : "transparent",
+                    backgroundColor: active ? C.primary : "transparent",
                     borderWidth: 1,
-                    borderColor: active ? C.hairline : C.hairlineSoft,
+                    borderColor: active ? C.primary : C.hairline,
                     transform: [{ scale: pressed ? 0.96 : 1 }],
                   })}
                 >
-                  <Text style={{ ...T.button, color: active ? C.ink : C.inkMuted } as TextStyle}>
+                  <Text
+                    style={{
+                      ...T.button,
+                      fontWeight: active ? "600" : "500",
+                      color: active ? C.onPrimary : C.inkMuted,
+                    } as TextStyle}
+                  >
                     {pos}
                   </Text>
                 </Pressable>

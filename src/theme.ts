@@ -66,8 +66,12 @@ export const darkColors: ColorSet = {
   accent: '#0099ff',
   success: '#22c55e',
 
-  primary: '#ffffff',
-  onPrimary: '#000000',
+  // Departs from the spec, which reserves the blue as a signal color and
+  // keeps CTAs white. On a working tool the white pill reads as chrome
+  // rather than as "the action", so the accent is promoted to the CTA fill
+  // and to the on-state of every toggle.
+  primary: '#0099ff',
+  onPrimary: '#ffffff',
 
   gradMagenta: '#d44df0',
   gradViolet: '#6a4cf5',
@@ -99,7 +103,8 @@ export const lightColors: ColorSet = {
   accent: '#0086e0',
   success: '#16a34a',
 
-  primary: '#000000',
+  // Deepened so white labels clear AA against the fill on a white canvas.
+  primary: '#0072cc',
   onPrimary: '#ffffff',
 
   gradMagenta: '#b830d4',

@@ -18,6 +18,9 @@ export function gradient(css: string, fallback: string): ViewStyle {
   return { backgroundColor: fallback };
 }
 
+/** Ties the optimal result back to the CTA blue. */
+export const BLUE_WASH =
+  "radial-gradient(120% 120% at 10% 0%, #4fc0ff 0%, #0099ff 45%, #5a3ce0 100%)";
 export const VIOLET_WASH =
   "radial-gradient(120% 120% at 12% 0%, #8b6cff 0%, #6a4cf5 42%, #4a2fd0 100%)";
 export const MAGENTA_WASH =
