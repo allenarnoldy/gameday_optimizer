@@ -55,7 +55,9 @@ export function installFonts() {
 
     /* Toggles are used dozens of times per session, so they get a colour
        transition only — no movement, which would read as lag. */
-    [data-toggle="true"] { transition: background-color 140ms ease, color 140ms ease; }
+    [data-toggle="true"] {
+      transition: border-color 140ms ease, color 140ms ease, background-color 140ms ease;
+    }
 
     /* Results stagger in. Keyframes are fine here: the list is remounted per
        solve, so there is no mid-flight retarget to worry about. */

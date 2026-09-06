@@ -124,9 +124,15 @@ export function IconButton({
 }
 
 /**
- * Filter / tab chip. Default is translucent, active flips to an opaque fill —
- * the chip "lifts" rather than changing hue. Colour-only transition because
- * these get hit constantly.
+ * Filter / tab chip.
+ *
+ * The fill stays put in both states; selection is a 2px brand-blue outline
+ * with the label switching to the brighter link blue. A solid blue fill was
+ * indistinguishable from the primary CTA, which left nothing on screen
+ * reading as *the* action — the solid fill belongs to the CTA alone.
+ *
+ * The border is always 2px (transparent when off) so toggling never nudges
+ * layout, and the transition is colour-only because these are hit constantly.
  */
 export function Chip({
   label, active, onPress, flex,
@@ -139,20 +145,20 @@ export function Chip({
       style={{
         flex: flex ? 1 : undefined,
         minHeight: 40,
-        paddingVertical: 9,
-        paddingHorizontal: 16,
+        paddingVertical: 7,
+        paddingHorizontal: 14,
         borderRadius: radius.full,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: active
-          ? C.primary
-          : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)"),
+        backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)",
+        borderWidth: 2,
+        borderColor: active ? C.primary : "transparent",
       }}
     >
       <Text
         style={{
           ...T.buttonMd,
-          color: active ? C.onPrimary : C.inkMuted,
+          color: active ? C.link : C.inkMuted,
         } as TextStyle}
       >
         {label}
