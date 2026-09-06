@@ -185,9 +185,22 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ---- The blue band: the system's action moment ---- */}
-        <View style={{ backgroundColor: C.primary, paddingHorizontal: gutter }}>
-          <View style={{ ...column, paddingVertical: isDesktop ? space.xl : space.lg, gap: space.xs }}>
+        {/* ---- The blue band: the system's action moment ----
+             Held to the working column rather than bleeding edge-to-edge, so
+             it shares a left edge with the controls beneath it. Now that it's
+             a contained block rather than a full-bleed band it takes the 8px
+             card radius, matching the panel below. */}
+        <View style={{ paddingHorizontal: gutter, paddingTop: space.sm }}>
+          <View
+            style={{
+              ...column,
+              backgroundColor: C.primary,
+              borderRadius: radius.md,
+              paddingVertical: isDesktop ? space.xl : space.lg,
+              paddingHorizontal: space.lg,
+              gap: space.xs,
+            }}
+          >
             <Text
               style={{
                 ...T.captionSm,
