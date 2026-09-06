@@ -1,15 +1,15 @@
 import React from 'react';
-import { SafeAreaView, StatusBar } from 'react-native';
+import { View, StatusBar } from 'react-native';
 import HomeScreen from './src/screens/HomeScreen';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 
 function AppContent() {
   const { C, isDark } = useTheme();
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={C.bg} />
+    <View style={{ flex: 1, backgroundColor: C.canvas }}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.canvas} />
       <HomeScreen />
-    </SafeAreaView>
+    </View>
   );
 }
 

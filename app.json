@@ -7,8 +7,8 @@
       "name": "Gameday Optimizer",
       "shortName": "Gameday",
       "description": "NFL DFS Lineup Optimizer — find the best lineup within the salary cap",
-      "themeColor": "#16a34a",
-      "backgroundColor": "#0f172a",
+      "themeColor": "#090909",
+      "backgroundColor": "#090909",
       "display": "standalone",
       "orientation": "any",
       "lang": "en"

@@ -1,6 +1,9 @@
 import React from "react";
-import { View, Text, TextInput, Pressable, Switch } from "react-native";
+import { View, Text, TextInput, Pressable, TextStyle, useWindowDimensions } from "react-native";
 import { useTheme } from "../ThemeContext";
+import { radius, space, type as T } from "../theme";
+import { Card, Divider } from "./ui";
+import { tnum } from "../fonts";
 
 type Props = {
   scoring: "ppr" | "half" | "std"; setScoring: (s: "ppr" | "half" | "std") => void;
@@ -11,96 +14,156 @@ type Props = {
   window3pm: boolean; setWindow3pm: (b: boolean) => void;
 };
 
+/** Field label — caption tier, ink-muted. Hierarchy is ink -> ink-muted only. */
+function Label({ children }: { children: React.ReactNode }) {
+  const { C } = useTheme();
+  return (
+    <Text style={{ ...T.caption, color: C.inkMuted, marginBottom: space.xs } as TextStyle}>
+      {children}
+    </Text>
+  );
+}
+
+/**
+ * Pill toggle. Selected state is a surface lift (canvas -> surface2), never a
+ * chromatic fill — the spec's pricing-tab pattern.
+ */
+function TabPill({
+  label, active, onPress, flex,
+}: { label: string; active: boolean; onPress: () => void; flex?: boolean }) {
+  const { C } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: flex ? 1 : undefined,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderRadius: radius.pill,
+        minHeight: 40,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: active ? C.surface2 : "transparent",
+        borderWidth: 1,
+        borderColor: active ? C.hairline : "transparent",
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text style={{ ...T.button, color: active ? C.ink : C.inkMuted } as TextStyle}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function NumField({
+  value, onChangeText, placeholder,
+}: { value: string; onChangeText: (t: string) => void; placeholder?: string }) {
+  const { C } = useTheme();
+  return (
+    <TextInput
+      keyboardType="numeric"
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={C.light}
+      {...tnum}
+      style={{
+        backgroundColor: C.surface2,
+        borderRadius: radius.md,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: C.hairline,
+        ...T.body,
+        color: C.ink,
+      } as TextStyle}
+    />
+  );
+}
+
 export default function Controls(props: Props) {
   const { C } = useTheme();
+  const { width } = useWindowDimensions();
+  const narrow = width < 560;
   const {
     scoring, setScoring,
     cap, setCap, topN, setTopN, maxPerTeam, setMaxPerTeam,
     windowNoon, setWindowNoon, window3pm, setWindow3pm,
   } = props;
 
-  const inputStyle = {
-    borderWidth: 1.5, borderColor: C.border, borderRadius: 10,
-    padding: 10, fontSize: 15, color: C.text, backgroundColor: C.card,
-  } as const;
-
   return (
-    <View style={{ backgroundColor: C.card, borderRadius: 20, padding: 16, gap: 14, borderWidth: 1, borderColor: C.border }}>
+    <Card padding={space.lg} style={{ gap: space.lg }}>
 
-      {/* Scoring row */}
-      <View>
-        <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>Scoring</Text>
-        <View style={{ flexDirection: "row", gap: 6 }}>
-          {(["ppr", "half", "std"] as const).map(s => {
-            const active = scoring === s;
-            return (
-              <Pressable
+      {/* Scoring + game window sit on one line at desktop width */}
+      <View style={{ flexDirection: narrow ? "column" : "row", gap: space.lg }}>
+        <View style={{ flex: 1 }}>
+          <Label>Scoring</Label>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: space.xxs,
+              backgroundColor: C.canvas,
+              borderRadius: radius.pill,
+              padding: 4,
+              borderWidth: 1,
+              borderColor: C.hairlineSoft,
+            }}
+          >
+            {(["ppr", "half", "std"] as const).map(s => (
+              <TabPill
                 key={s}
+                flex
+                label={s === "ppr" ? "PPR" : s === "half" ? "Half" : "Standard"}
+                active={scoring === s}
                 onPress={() => setScoring(s)}
-                style={{
-                  flex: 1, paddingVertical: 9, borderRadius: 10,
-                  backgroundColor: active ? C.primary : C.card,
-                  borderWidth: 1.5, borderColor: active ? C.primary : C.border,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: active ? "#fff" : C.muted, fontWeight: "700", fontSize: 12, textTransform: "uppercase" }}>
-                  {s}
-                </Text>
-              </Pressable>
-            );
-          })}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Label>Game window</Label>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: space.xxs,
+              backgroundColor: C.canvas,
+              borderRadius: radius.pill,
+              padding: 4,
+              borderWidth: 1,
+              borderColor: C.hairlineSoft,
+            }}
+          >
+            <TabPill flex label="Noon" active={windowNoon} onPress={() => setWindowNoon(!windowNoon)} />
+            <TabPill flex label="3 PM" active={window3pm} onPress={() => setWindow3pm(!window3pm)} />
+          </View>
         </View>
       </View>
 
-      {/* Window toggles */}
-      <View style={{ flexDirection: "row", gap: 20, alignItems: "center" }}>
-        <Text style={{ fontSize: 12, fontWeight: "500", color: C.muted }}>Game window</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Switch value={windowNoon} onValueChange={setWindowNoon} trackColor={{ true: C.primary }} />
-          <Text style={{ color: C.text, fontWeight: "500" }}>Noon</Text>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Switch value={window3pm} onValueChange={setWindow3pm} trackColor={{ true: C.primary }} />
-          <Text style={{ color: C.text, fontWeight: "500" }}>3 PM</Text>
-        </View>
-      </View>
+      <Divider soft />
 
-      <View style={{ height: 1, backgroundColor: C.border }} />
-
-      {/* Cap / Top N / Max per team */}
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>Salary Cap</Text>
-          <TextInput
-            keyboardType="numeric"
-            value={String(cap)}
-            onChangeText={t => setCap(Number(t || 0))}
-            style={inputStyle}
-          />
+      {/* Numeric constraints */}
+      <View style={{ flexDirection: "row", gap: space.sm }}>
+        <View style={{ flex: 1.2 }}>
+          <Label>Salary cap</Label>
+          <NumField value={String(cap)} onChangeText={t => setCap(Number(t.replace(/\D/g, "") || 0))} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>Top Lineups</Text>
-          <TextInput
-            keyboardType="numeric"
-            value={String(topN)}
-            onChangeText={t => setTopN(Number(t || 0))}
-            style={inputStyle}
-          />
+          <Label>Lineups</Label>
+          <NumField value={String(topN)} onChangeText={t => setTopN(Number(t.replace(/\D/g, "") || 0))} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 12, color: C.muted, marginBottom: 4, fontWeight: "500" }}>Max / Team</Text>
-          <TextInput
-            keyboardType="numeric"
+          <Label>Max / team</Label>
+          <NumField
             value={maxPerTeam == null ? "" : String(maxPerTeam)}
-            onChangeText={t => setMaxPerTeam(t === "" ? null : Number(t || 0))}
-            style={inputStyle}
-            placeholder="—"
-            placeholderTextColor={C.light}
+            onChangeText={t => {
+              const d = t.replace(/\D/g, "");
+              setMaxPerTeam(d === "" ? null : Number(d));
+            }}
+            placeholder="Any"
           />
         </View>
       </View>
 
-    </View>
+    </Card>
   );
 }

@@ -1,50 +1,77 @@
 import React from "react";
-import { View, Text, FlatList } from "react-native";
+import { View, Text, FlatList, TextStyle } from "react-native";
 import { Player } from "../types";
 import { useTheme } from "../ThemeContext";
 import { currency } from "../utils/time";
-
-function PosBadge({ pos }: { pos: string }) {
-  const { C, POS } = useTheme();
-  const colors = POS[pos] ?? { bg: C.border, fg: C.muted };
-  return (
-    <View style={{ backgroundColor: colors.bg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, minWidth: 34, alignItems: "center" }}>
-      <Text style={{ color: colors.fg, fontWeight: "700", fontSize: 11 }}>{pos}</Text>
-    </View>
-  );
-}
+import { radius, space, type as T } from "../theme";
+import { PosBadge } from "./ui";
+import { tnum } from "../fonts";
 
 export default function PlayerList({ players }: { players: Player[] }) {
   const { C } = useTheme();
   return (
-    <View style={{ backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
-      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border }}>
-        <Text style={{ flex: 1, fontSize: 12, fontWeight: "700", color: C.muted, letterSpacing: 0.5 }}>PLAYER ({players.length})</Text>
-        <Text style={{ width: 72, textAlign: "right", fontSize: 12, fontWeight: "700", color: C.muted, letterSpacing: 0.5 }}>SALARY</Text>
-        <Text style={{ width: 54, textAlign: "right", fontSize: 12, fontWeight: "700", color: C.muted, letterSpacing: 0.5 }}>PROJ</Text>
+    <View
+      style={{
+        backgroundColor: C.surface1,
+        borderRadius: radius.xl,
+        borderWidth: 1,
+        borderColor: C.hairlineSoft,
+        overflow: "hidden",
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: space.lg,
+          paddingVertical: space.sm,
+          borderBottomWidth: 1,
+          borderBottomColor: C.hairline,
+          gap: space.xs,
+        }}
+      >
+        <Text style={{ ...T.micro, flex: 1, color: C.light } as TextStyle}>
+          PLAYER ({players.length})
+        </Text>
+        <Text style={{ ...T.micro, width: 64, textAlign: "right", color: C.light } as TextStyle}>SALARY</Text>
+        <Text style={{ ...T.micro, width: 46, textAlign: "right", color: C.light } as TextStyle}>PROJ</Text>
       </View>
+
       <FlatList
         data={players}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         scrollEnabled={false}
-        renderItem={({ item, index }) => (
-          <View style={{
-            flexDirection: "row", alignItems: "center",
-            paddingHorizontal: 14, paddingVertical: 10,
-            backgroundColor: index % 2 === 0 ? C.card : C.bg,
-            borderBottomWidth: 1, borderBottomColor: C.border,
-          }}>
-            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <PosBadge pos={item.pos} />
-              <View>
-                <Text style={{ fontWeight: "600", color: C.text, fontSize: 14 }}>{item.name}</Text>
-                <Text style={{ color: C.muted, fontSize: 12 }}>{item.team}{item.opp ? ` vs ${item.opp}` : ""}</Text>
+        renderItem={({ item }) => (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: space.lg,
+              paddingVertical: 11,
+              borderBottomWidth: 1,
+              borderBottomColor: C.hairlineSoft,
+              gap: space.xs,
+            }}
+          >
+            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: space.xs }}>
+              <PosBadge pos={item.pos} compact />
+              <View style={{ gap: 1 }}>
+                <Text style={{ ...T.bodySm, color: C.ink } as TextStyle}>{item.name}</Text>
+                <Text style={{ ...T.micro, color: C.inkMuted } as TextStyle}>
+                  {item.team}{item.opp ? ` vs ${item.opp}` : ""}
+                </Text>
               </View>
             </View>
-            <Text style={{ width: 72, textAlign: "right", color: C.muted, fontSize: 13 }}>
+            <Text
+              {...tnum}
+              style={{ ...T.micro, width: 64, textAlign: "right", color: C.inkMuted } as TextStyle}
+            >
               {item.salary ? currency(item.salary) : "—"}
             </Text>
-            <Text style={{ width: 54, textAlign: "right", fontWeight: "700", color: C.primary, fontSize: 14 }}>
+            <Text
+              {...tnum}
+              style={{ ...T.bodySm, width: 46, textAlign: "right", color: C.ink } as TextStyle}
+            >
               {item.proj.toFixed(1)}
             </Text>
           </View>

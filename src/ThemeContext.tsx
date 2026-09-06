@@ -1,11 +1,12 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { Platform } from "react-native";
 import {
   ColorSet, PosColors, RankEntry,
   lightColors, darkColors,
   lightPOS, darkPOS,
   lightRANK, darkRANK,
 } from "./theme";
+import { installFramerFonts } from "./fonts";
 
 type ThemeCtx = {
   isDark: boolean;
@@ -16,18 +17,31 @@ type ThemeCtx = {
 };
 
 const ThemeContext = createContext<ThemeCtx>({
-  isDark: false,
+  isDark: true,
   toggle: () => {},
-  C: lightColors,
-  POS: lightPOS,
-  RANK: lightRANK,
+  C: darkColors,
+  POS: darkPOS,
+  RANK: darkRANK,
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(systemScheme === "dark");
+  // Framer's identity is dark — the brand mode is the default, not the
+  // system preference. Light is available as the documented inverse.
+  const [isDark, setIsDark] = useState(true);
 
   const toggle = useCallback(() => setIsDark(d => !d), []);
+
+  useEffect(() => { installFramerFonts(); }, []);
+
+  // Keep the document canvas in sync so overscroll doesn't reveal a
+  // mismatched ground behind the app.
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const bg = isDark ? darkColors.canvas : lightColors.canvas;
+    document.documentElement.style.background = bg;
+    document.body.style.background = bg;
+    document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+  }, [isDark]);
 
   const value = useMemo<ThemeCtx>(() => ({
     isDark,
