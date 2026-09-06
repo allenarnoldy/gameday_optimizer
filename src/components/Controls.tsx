@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TextInput, TextStyle, useWindowDimensions } from "react-native";
 import { useTheme } from "../ThemeContext";
 import { radius, space, type as T } from "../theme";
-import { Card, Chip, Divider } from "./ui";
+import { Card, Chip, CheckRow, Divider } from "./ui";
 import { tnum } from "../fonts";
 
 type Props = {
@@ -89,9 +89,11 @@ export default function Controls(props: Props) {
 
         <View style={{ flex: 1 }}>
           <Label>Kickoff window</Label>
-          <View style={{ flexDirection: "row", gap: space.xs }}>
-            <Chip flex label="Noon" active={windowNoon} onPress={() => setWindowNoon(!windowNoon)} />
-            <Chip flex label="3 PM" active={window3pm} onPress={() => setWindow3pm(!window3pm)} />
+          {/* Both windows can be on at once, so these are checkboxes — a pill
+              group would imply the two are mutually exclusive. */}
+          <View style={{ flexDirection: "row", gap: space.lg, minHeight: 40 }}>
+            <CheckRow label="Noon" checked={windowNoon} onPress={() => setWindowNoon(!windowNoon)} />
+            <CheckRow label="3 PM" checked={window3pm} onPress={() => setWindow3pm(!window3pm)} />
           </View>
         </View>
       </View>

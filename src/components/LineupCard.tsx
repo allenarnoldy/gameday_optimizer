@@ -4,7 +4,7 @@ import { Lineup } from "../types";
 import { useTheme } from "../ThemeContext";
 import { currency } from "../utils/time";
 import { radius, space, type as T } from "../theme";
-import { PosBadge, GoldBar } from "./ui";
+import { PosBadge, gradient, GOLD_ROW } from "./ui";
 import { tnum, rise } from "../fonts";
 
 export default function LineupCard({ lu, index }: { lu: Lineup; index: number }) {
@@ -28,18 +28,23 @@ export default function LineupCard({ lu, index }: { lu: Lineup; index: number })
         },
       ]}
     >
-      {isTop && <GoldBar />}
-
-      {/* Header */}
+      {/*
+        The top lineup's whole title row carries the PS Plus gold. Type flips
+        to near-black — white on gold is unreadable, and the dark-on-gold
+        pairing is how the tier banner itself renders.
+      */}
       <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          paddingHorizontal: space.lg,
-          paddingTop: space.md,
-          paddingBottom: space.sm,
-        }}
+        style={[
+          {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            paddingHorizontal: space.lg,
+            paddingTop: space.md,
+            paddingBottom: space.sm,
+          },
+          isTop ? gradient(GOLD_ROW, C.goldMid) : null,
+        ]}
       >
         <View style={{ gap: 2 }}>
           <Text
@@ -47,22 +52,31 @@ export default function LineupCard({ lu, index }: { lu: Lineup; index: number })
               ...T.captionSm,
               textTransform: "uppercase",
               letterSpacing: 1,
-              color: isTop ? C.goldMid : C.inkFaint,
+              fontWeight: "700",
+              color: isTop ? "rgba(0,0,0,0.68)" : C.inkFaint,
             } as TextStyle}
           >
             {isTop ? "★ Optimal lineup" : `Lineup ${index + 1}`}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
-            <Text {...tnum} style={{ ...T.displayMd, color: C.ink } as TextStyle}>
+            <Text {...tnum} style={{ ...T.displayMd, color: isTop ? "#121314" : C.ink } as TextStyle}>
               {lu.totalProj.toFixed(1)}
             </Text>
-            <Text style={{ ...T.captionMd, color: C.inkMuted } as TextStyle}>pts</Text>
+            <Text
+              style={{ ...T.captionMd, color: isTop ? "rgba(0,0,0,0.68)" : C.inkMuted } as TextStyle}
+            >
+              pts
+            </Text>
           </View>
         </View>
 
         <View style={{ alignItems: "flex-end", gap: 2 }}>
-          <Text style={{ ...T.captionSm, color: C.inkFaint } as TextStyle}>Salary used</Text>
-          <Text {...tnum} style={{ ...T.headingMd, color: C.ink } as TextStyle}>
+          <Text
+            style={{ ...T.captionSm, color: isTop ? "rgba(0,0,0,0.68)" : C.inkFaint } as TextStyle}
+          >
+            Salary used
+          </Text>
+          <Text {...tnum} style={{ ...T.headingMd, color: isTop ? "#121314" : C.ink } as TextStyle}>
             {currency(lu.totalSalary)}
           </Text>
         </View>

@@ -17,8 +17,7 @@ import PlayerPanel from "../components/PlayerPanel";
 import { buildTopLineups } from "../optimizer";
 import { useTheme } from "../ThemeContext";
 import { radius, space, type as T, heroType, APP_WIDTH } from "../theme";
-import { Card, IconButton, PillButton } from "../components/ui";
-import { tnum } from "../fonts";
+import { Card, IconButton, PillButton, PanelRightIcon } from "../components/ui";
 
 export default function HomeScreen() {
   const { C, isDark, toggle } = useTheme();
@@ -200,21 +199,6 @@ export default function HomeScreen() {
               NFL Daily Fantasy · {season} Week {week}
             </Text>
             <Text style={{ ...hero, color: "#ffffff" } as TextStyle}>Gameday Optimizer</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, flexWrap: "wrap", marginTop: 2 }}>
-              <Text {...tnum} style={{ ...T.captionMd, color: "rgba(255,255,255,0.85)" } as TextStyle}>
-                {filteredPlayers.length} players in pool
-              </Text>
-              {lockedIds.size > 0 && (
-                <Text {...tnum} style={{ ...T.captionMd, color: "rgba(255,255,255,0.85)" } as TextStyle}>
-                  {lockedIds.size} locked
-                </Text>
-              )}
-              {loading && (
-                <Text style={{ ...T.captionMd, color: "rgba(255,255,255,0.85)" } as TextStyle}>
-                  {loading}
-                </Text>
-              )}
-            </View>
           </View>
         </View>
 
@@ -240,11 +224,19 @@ export default function HomeScreen() {
                 {generating ? <ActivityIndicator size="small" color="#fff" /> : null}
               </PillButton>
               <PillButton
-                label={`Player pool · ${filteredPlayers.length}`}
+                // Locked count used to live in the banner; it belongs with the
+                // pool it describes rather than disappearing entirely.
+                label={
+                  lockedIds.size > 0
+                    ? `Player pool · ${filteredPlayers.length} · ${lockedIds.size} locked`
+                    : `Player pool · ${filteredPlayers.length}`
+                }
                 onPress={() => setPanelOpen(true)}
                 variant="secondary"
                 style={isNarrow ? { width: "100%" } : undefined}
-              />
+              >
+                <PanelRightIcon color={C.ink} />
+              </PillButton>
             </View>
           </View>
         </View>

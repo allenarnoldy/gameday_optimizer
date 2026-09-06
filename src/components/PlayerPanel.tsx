@@ -4,34 +4,11 @@ import { Player } from "../types";
 import { useTheme } from "../ThemeContext";
 import { currency } from "../utils/time";
 import { radius, space, type as T } from "../theme";
-import { PosBadge, IconButton, Chip } from "./ui";
+import { PosBadge, IconButton, Chip, Checkbox } from "./ui";
 import { tnum, drawerState, scrimState, pressable } from "../fonts";
 
 const POSITIONS = ["All", "QB", "RB", "WR", "TE", "DST"] as const;
 type PosFilter = typeof POSITIONS[number];
-
-/** Selection uses the brand blue — the one place colour marks state here. */
-function Checkbox({ checked }: { checked: boolean }) {
-  const { C } = useTheme();
-  return (
-    <View
-      style={{
-        width: 20,
-        height: 20,
-        borderRadius: radius.sm,
-        borderWidth: checked ? 0 : 1,
-        borderColor: C.hairline,
-        backgroundColor: checked ? C.primary : "transparent",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {checked && (
-        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700", lineHeight: 15 }}>✓</Text>
-      )}
-    </View>
-  );
-}
 
 type Props = {
   visible: boolean;

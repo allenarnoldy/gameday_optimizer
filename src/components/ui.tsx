@@ -16,6 +16,8 @@ export function gradient(css: string, fallback: string): ViewStyle {
 }
 
 export const GOLD_BAR = "linear-gradient(90deg, #ffce21 0%, #f5a623 50%, #ee8e00 100%)";
+/** Same three stops, angled slightly so a tall row reads as a lit surface. */
+export const GOLD_ROW = "linear-gradient(104deg, #ffce21 0%, #f5a623 55%, #ee8e00 100%)";
 
 /* ------------------------------------------------------------------ */
 /* Buttons                                                             */
@@ -168,6 +170,63 @@ export function Chip({
 }
 
 /* ------------------------------------------------------------------ */
+/* Checkbox                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 4px-radius box, filled brand blue when checked.
+ *
+ * Independent on/off options need a checkbox, not a pill: a row of pills
+ * reads as "pick one", which is wrong wherever several can be active at
+ * once. The filled state is fine here — at 20px it never competes with the
+ * CTA the way a full-width pill did.
+ */
+export function Checkbox({ checked }: { checked: boolean }) {
+  const { C } = useTheme();
+  return (
+    <View
+      {...toggleable}
+      style={{
+        width: 20,
+        height: 20,
+        borderRadius: radius.sm,
+        borderWidth: 2,
+        borderColor: checked ? C.primary : C.hairline,
+        backgroundColor: checked ? C.primary : "transparent",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {checked && (
+        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700", lineHeight: 14 }}>✓</Text>
+      )}
+    </View>
+  );
+}
+
+/** Checkbox plus label, the whole row pressable so the target is generous. */
+export function CheckRow({
+  label, checked, onPress,
+}: { label: string; checked: boolean; onPress: () => void }) {
+  const { C } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: space.xs,
+        minHeight: 40,
+        paddingRight: space.xs,
+      }}
+    >
+      <Checkbox checked={checked} />
+      <Text style={{ ...T.bodySm, fontWeight: "500", color: C.ink } as TextStyle}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Surfaces                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -219,6 +278,31 @@ export function Divider({ style }: { style?: ViewStyle }) {
 export function GoldBar({ height = 4 }: { height?: number }) {
   const { C } = useTheme();
   return <View style={[{ height, width: "100%" }, gradient(GOLD_BAR, C.goldMid)]} />;
+}
+
+/**
+ * Right-panel glyph for the drawer trigger — an outlined frame with its right
+ * edge filled, so the button says which side the panel comes from. Drawn from
+ * Views rather than a glyph font so it stays crisp and needs no dependency.
+ */
+export function PanelRightIcon({ color, size = 15 }: { color: string; size?: number }) {
+  const h = Math.round(size * 0.82);
+  return (
+    <View
+      style={{
+        width: size,
+        height: h,
+        borderRadius: 2,
+        borderWidth: 1.5,
+        borderColor: color,
+        flexDirection: "row",
+        justifyContent: "flex-end",
+        overflow: "hidden",
+      }}
+    >
+      <View style={{ width: Math.round(size * 0.32), backgroundColor: color }} />
+    </View>
+  );
 }
 
 /* ------------------------------------------------------------------ */
