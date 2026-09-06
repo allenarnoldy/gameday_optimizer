@@ -1,33 +1,33 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, View, Text, Pressable, FlatList, TextStyle, useWindowDimensions } from "react-native";
 import { Player } from "../types";
 import { useTheme } from "../ThemeContext";
 import { currency } from "../utils/time";
 import { radius, space, type as T } from "../theme";
-import { PosBadge, IconButton } from "./ui";
-import { tnum } from "../fonts";
+import { PosBadge, IconButton, Chip } from "./ui";
+import { tnum, drawerState, scrimState, pressable } from "../fonts";
 
 const POSITIONS = ["All", "QB", "RB", "WR", "TE", "DST"] as const;
 type PosFilter = typeof POSITIONS[number];
 
-/** Selection is the one place the blue signal color appears. */
+/** Selection uses the brand blue — the one place colour marks state here. */
 function Checkbox({ checked }: { checked: boolean }) {
   const { C } = useTheme();
   return (
     <View
       style={{
-        width: 18,
-        height: 18,
-        borderRadius: radius.xs + 1,
-        borderWidth: 1,
-        borderColor: checked ? C.accent : C.hairline,
-        backgroundColor: checked ? C.accent : "transparent",
+        width: 20,
+        height: 20,
+        borderRadius: radius.sm,
+        borderWidth: checked ? 0 : 1,
+        borderColor: C.hairline,
+        backgroundColor: checked ? C.primary : "transparent",
         alignItems: "center",
         justifyContent: "center",
       }}
     >
       {checked && (
-        <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700", lineHeight: 14 }}>✓</Text>
+        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700", lineHeight: 15 }}>✓</Text>
       )}
     </View>
   );
@@ -46,36 +46,54 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
   const { width } = useWindowDimensions();
   const [posFilter, setPosFilter] = useState<PosFilter>("All");
 
-  const panelWidth = Math.min(400, width);
+  // Keep the modal mounted through the exit so the panel can slide out
+  // instead of being cut. `open` drives the transform one frame after mount.
+  const [mounted, setMounted] = useState(visible);
+  const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      // Double rAF: a single frame flips `open` before the browser has
+      // painted the closed state, so there is no start value to transition
+      // from and the panel just appears. The second frame guarantees a paint.
+      let inner = 0;
+      const outer = requestAnimationFrame(() => {
+        inner = requestAnimationFrame(() => setOpen(true));
+      });
+      return () => { cancelAnimationFrame(outer); cancelAnimationFrame(inner); };
+    }
+    setOpen(false);
+    const t = setTimeout(() => setMounted(false), 260);
+    return () => clearTimeout(t);
+  }, [visible]);
+
+  if (!mounted) return null;
+
+  const panelWidth = Math.min(420, width);
   const filtered = (posFilter === "All" ? players : players.filter(p => p.pos === posFilter))
     .slice()
     .sort((a, b) => b.proj - a.proj);
 
-  const lockedCount = lockedIds.size;
-
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible transparent animationType="none" onRequestClose={onClose}>
       <Pressable
+        onPress={onClose}
+        {...scrimState(open)}
         style={{
           position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.72)",
+          backgroundColor: "rgba(0,0,0,0.7)",
         }}
-        onPress={onClose}
       />
 
       <View
+        {...drawerState(open)}
         style={{
           position: "absolute", right: 0, top: 0, bottom: 0,
           width: panelWidth,
           backgroundColor: C.canvas,
           borderLeftWidth: 1,
           borderLeftColor: C.hairline,
-          shadowColor: "#000",
-          shadowOffset: { width: -10, height: 0 },
-          shadowOpacity: 0.4,
-          shadowRadius: 40,
-          elevation: 12,
         }}
       >
         {/* Header */}
@@ -84,80 +102,61 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
             paddingHorizontal: space.lg,
             paddingTop: space.xl,
             paddingBottom: space.md,
-            borderBottomWidth: 1,
-            borderBottomColor: C.hairlineSoft,
             gap: space.md,
+            borderBottomWidth: 1,
+            borderBottomColor: C.hairline,
           }}
         >
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <View style={{ gap: 3 }}>
-              <Text style={{ ...T.headline, color: C.ink } as TextStyle}>Player pool</Text>
-              <Text style={{ ...T.caption, color: C.inkMuted } as TextStyle}>
-                {players.length} available{lockedCount > 0 ? ` · ${lockedCount} locked` : ""}
+            <View style={{ gap: 2 }}>
+              <Text style={{ ...T.headingLg, color: C.ink } as TextStyle}>Player pool</Text>
+              <Text style={{ ...T.captionMd, color: C.inkMuted } as TextStyle}>
+                {players.length} available
+                {lockedIds.size > 0 ? ` · ${lockedIds.size} locked` : ""}
               </Text>
             </View>
-            <IconButton onPress={onClose} size={36}>
-              <Text style={{ fontSize: 14, color: C.inkMuted }}>✕</Text>
+            <IconButton onPress={onClose} size={40}>
+              <Text style={{ fontSize: 15, color: C.ink }}>✕</Text>
             </IconButton>
           </View>
 
-          <Text style={{ ...T.micro, color: C.light } as TextStyle}>
+          <Text style={{ ...T.captionSm, color: C.inkFaint } as TextStyle}>
             Tap a player to lock them into every lineup.
           </Text>
 
-          {/* Position filter pills — selected = surface lift, not color */}
           <View style={{ flexDirection: "row", gap: space.xxs, flexWrap: "wrap" }}>
-            {POSITIONS.map(pos => {
-              const active = posFilter === pos;
-              return (
-                <Pressable
-                  key={pos}
-                  onPress={() => setPosFilter(pos)}
-                  style={({ pressed }) => ({
-                    paddingVertical: 7,
-                    paddingHorizontal: 13,
-                    borderRadius: radius.pill,
-                    backgroundColor: active ? C.primary : "transparent",
-                    borderWidth: 1,
-                    borderColor: active ? C.primary : C.hairline,
-                    transform: [{ scale: pressed ? 0.96 : 1 }],
-                  })}
-                >
-                  <Text
-                    style={{
-                      ...T.button,
-                      fontWeight: active ? "600" : "500",
-                      color: active ? C.onPrimary : C.inkMuted,
-                    } as TextStyle}
-                  >
-                    {pos}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {POSITIONS.map(pos => (
+              <Chip
+                key={pos}
+                label={pos}
+                active={posFilter === pos}
+                onPress={() => setPosFilter(pos)}
+              />
+            ))}
           </View>
         </View>
 
         {/* Column headers */}
         <View
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingHorizontal: space.lg,
-            paddingVertical: space.xs,
-            borderBottomWidth: 1,
-            borderBottomColor: C.hairlineSoft,
-            gap: space.xs,
+            flexDirection: "row", alignItems: "center", gap: space.xs,
+            paddingHorizontal: space.lg, paddingVertical: space.xs,
+            borderBottomWidth: 1, borderBottomColor: C.hairlineSoft,
           }}
         >
-          <View style={{ width: 18 }} />
-          <View style={{ width: 34 }} />
-          <Text style={{ ...T.micro, flex: 1, color: C.light } as TextStyle}>PLAYER</Text>
-          <Text style={{ ...T.micro, width: 58, textAlign: "right", color: C.light } as TextStyle}>SALARY</Text>
-          <Text style={{ ...T.micro, width: 46, textAlign: "right", color: C.light } as TextStyle}>PROJ</Text>
+          <View style={{ width: 20 }} />
+          <View style={{ width: 40 }} />
+          <Text style={{ ...T.captionSm, flex: 1, color: C.inkFaint, letterSpacing: 0.8 } as TextStyle}>
+            PLAYER
+          </Text>
+          <Text style={{ ...T.captionSm, width: 62, textAlign: "right", color: C.inkFaint } as TextStyle}>
+            SALARY
+          </Text>
+          <Text style={{ ...T.captionSm, width: 46, textAlign: "right", color: C.inkFaint } as TextStyle}>
+            PROJ
+          </Text>
         </View>
 
-        {/* Rows — no zebra striping; the dark canvas carries the separation */}
         <FlatList
           data={filtered}
           keyExtractor={item => item.id}
@@ -166,38 +165,32 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
             return (
               <Pressable
                 onPress={() => onToggleLock(item.id)}
+                {...pressable}
                 style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingHorizontal: space.lg,
-                  paddingVertical: 11,
-                  gap: space.xs,
-                  backgroundColor: locked ? C.surface1 : pressed ? C.surface1 : "transparent",
+                  flexDirection: "row", alignItems: "center", gap: space.xs,
+                  paddingHorizontal: space.lg, paddingVertical: 11,
+                  backgroundColor: locked
+                    ? "rgba(0,112,209,0.14)"
+                    : pressed ? C.surface1 : "transparent",
                   borderBottomWidth: 1,
                   borderBottomColor: C.hairlineSoft,
                 })}
               >
                 <Checkbox checked={locked} />
-                <PosBadge pos={item.pos} compact />
+                <PosBadge pos={item.pos} />
                 <View style={{ flex: 1, gap: 1 }}>
-                  <Text numberOfLines={1} style={{ ...T.bodySm, color: C.ink } as TextStyle}>
+                  <Text numberOfLines={1} style={{ ...T.bodySm, fontWeight: "500", color: C.ink } as TextStyle}>
                     {item.name}
                   </Text>
-                  <Text style={{ ...T.micro, color: C.inkMuted } as TextStyle}>
+                  <Text style={{ ...T.captionSm, color: C.inkFaint } as TextStyle}>
                     {item.team}{item.opp ? ` vs ${item.opp}` : ""}
                     {item.projSource ? ` · ${item.projSource}` : ""}
                   </Text>
                 </View>
-                <Text
-                  {...tnum}
-                  style={{ ...T.micro, width: 58, textAlign: "right", color: C.inkMuted } as TextStyle}
-                >
+                <Text {...tnum} style={{ ...T.captionMd, width: 62, textAlign: "right", color: C.inkMuted } as TextStyle}>
                   {item.salary ? currency(item.salary) : "—"}
                 </Text>
-                <Text
-                  {...tnum}
-                  style={{ ...T.bodySm, width: 46, textAlign: "right", color: C.ink } as TextStyle}
-                >
+                <Text {...tnum} style={{ ...T.bodySm, fontWeight: "600", width: 46, textAlign: "right", color: C.ink } as TextStyle}>
                   {item.proj.toFixed(1)}
                 </Text>
               </Pressable>
@@ -205,7 +198,7 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
           }}
           ListEmptyComponent={
             <View style={{ padding: space.xxl, alignItems: "center" }}>
-              <Text style={{ ...T.body, color: C.inkMuted } as TextStyle}>
+              <Text style={{ ...T.bodySm, color: C.inkMuted } as TextStyle}>
                 No players at this position.
               </Text>
             </View>

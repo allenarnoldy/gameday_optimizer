@@ -1,16 +1,13 @@
 import React from "react";
 import { View, Text, Pressable, Platform, ViewStyle, TextStyle } from "react-native";
 import { useTheme } from "../ThemeContext";
-import { radius, space, type as T, floatShadow } from "../theme";
+import { radius, space, type as T } from "../theme";
+import { pressable, toggleable } from "../fonts";
 
 /* ------------------------------------------------------------------ */
 /* Gradient helper                                                     */
 /* ------------------------------------------------------------------ */
-/**
- * The gradient spotlight is the brand's atmosphere device. On web we hand CSS
- * the real multi-stop gradient; on native we fall back to the base anchor
- * color the spec documents. No extra dependency for a web-first target.
- */
+/** The PS Plus gold is the system's only sanctioned chrome gradient. */
 export function gradient(css: string, fallback: string): ViewStyle {
   if (Platform.OS === "web") {
     return { backgroundColor: fallback, backgroundImage: css } as any;
@@ -18,104 +15,64 @@ export function gradient(css: string, fallback: string): ViewStyle {
   return { backgroundColor: fallback };
 }
 
-/** Ties the optimal result back to the CTA blue. */
-export const BLUE_WASH =
-  "radial-gradient(120% 120% at 10% 0%, #4fc0ff 0%, #0099ff 45%, #5a3ce0 100%)";
-export const VIOLET_WASH =
-  "radial-gradient(120% 120% at 12% 0%, #8b6cff 0%, #6a4cf5 42%, #4a2fd0 100%)";
-export const MAGENTA_WASH =
-  "radial-gradient(120% 120% at 85% 10%, #ef7bff 0%, #d44df0 45%, #8f2bb8 100%)";
-export const ORANGE_WASH =
-  "radial-gradient(120% 120% at 20% 100%, #ffb347 0%, #ff7a3d 45%, #ff5577 100%)";
-
-/* ------------------------------------------------------------------ */
-/* Chip — small caption pill used as an eyebrow                        */
-/* ------------------------------------------------------------------ */
-
-export function Chip({
-  label,
-  tone = "muted",
-  style,
-}: {
-  label: string;
-  tone?: "muted" | "ink" | "accent";
-  style?: ViewStyle;
-}) {
-  const { C } = useTheme();
-  const fg = tone === "ink" ? C.ink : tone === "accent" ? C.accent : C.inkMuted;
-  return (
-    <View
-      style={[
-        {
-          alignSelf: "flex-start",
-          backgroundColor: C.surface1,
-          borderRadius: radius.pill,
-          paddingVertical: 6,
-          paddingHorizontal: 12,
-          borderWidth: 1,
-          borderColor: C.hairline,
-        },
-        style,
-      ]}
-    >
-      <Text style={{ ...T.caption, color: fg } as TextStyle}>{label}</Text>
-    </View>
-  );
-}
+export const GOLD_BAR = "linear-gradient(90deg, #ffce21 0%, #f5a623 50%, #ee8e00 100%)";
 
 /* ------------------------------------------------------------------ */
 /* Buttons                                                             */
 /* ------------------------------------------------------------------ */
 
-type PillVariant = "primary" | "secondary" | "translucent";
+type Variant = "primary" | "secondary" | "commerce";
 
+/**
+ * The universal PlayStation CTA: fully-rounded pill, 48px tall, heavyweight
+ * label with +0.45px tracking. Pressed drops to the darker blue and scales
+ * 0.97 so the press is felt, not just seen.
+ */
 export function PillButton({
   label,
   onPress,
   variant = "primary",
   disabled,
-  size = "md",
+  compact,
   style,
   children,
 }: {
   label?: string;
   onPress?: () => void;
-  variant?: PillVariant;
+  variant?: Variant;
   disabled?: boolean;
-  size?: "md" | "lg";
+  compact?: boolean;
   style?: ViewStyle;
   children?: React.ReactNode;
 }) {
   const { C } = useTheme();
 
-  const bg =
-    variant === "primary" ? C.primary : variant === "secondary" ? C.surface1 : C.surface2;
-  const fg = variant === "primary" ? C.onPrimary : C.ink;
-
-  const padV = size === "lg" ? 16 : 10;
-  const padH = size === "lg" ? 24 : 15;
+  const fill =
+    variant === "primary" ? C.primary : variant === "commerce" ? C.commerce : "transparent";
+  const fillPressed = variant === "primary" ? C.primaryPressed : variant === "commerce" ? "#aa2f00" : C.surface2;
+  const fg = variant === "secondary" ? C.ink : C.onPrimary;
 
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      {...pressable}
       style={({ pressed }) =>
         [
           {
-            backgroundColor: disabled ? C.surface1 : bg,
-            borderRadius: radius.pill,
-            paddingVertical: padV,
-            paddingHorizontal: padH,
-            minHeight: 44,
+            backgroundColor: disabled ? C.surface2 : pressed ? fillPressed : fill,
+            borderRadius: radius.full,
+            minHeight: compact ? 40 : 48,
+            paddingVertical: compact ? 10 : 12,
+            paddingHorizontal: compact ? 20 : 28,
             alignItems: "center",
             justifyContent: "center",
             flexDirection: "row",
             gap: space.xs,
-            // The spec's pressed state is a scale shrink, not a darkened fill.
-            transform: [{ scale: pressed && !disabled ? 0.97 : 1 }],
-            opacity: disabled ? 0.5 : 1,
-            borderWidth: variant === "primary" ? 0 : 1,
+            borderWidth: variant === "secondary" ? 1 : 0,
             borderColor: C.hairline,
+            transform: [{ scale: pressed && !disabled ? 0.97 : 1 }],
+            opacity: disabled ? 0.6 : 1,
           } as ViewStyle,
           style,
         ] as ViewStyle
@@ -125,9 +82,8 @@ export function PillButton({
       {label ? (
         <Text
           style={{
-            ...T.button,
-            fontSize: size === "lg" ? 15 : 14,
-            color: disabled ? C.inkMuted : fg,
+            ...(compact ? T.buttonMd : T.buttonLg),
+            color: disabled ? C.inkFaint : fg,
           } as TextStyle}
         >
           {label}
@@ -137,39 +93,70 @@ export function PillButton({
   );
 }
 
-/** 40px circle for inline icon actions. Grows to 44px on touch viewports. */
+/** 48px circular icon button — the carousel-paddle shape. */
 export function IconButton({
-  onPress,
-  disabled,
-  children,
-  active,
-  size = 40,
+  onPress, disabled, children, size = 44,
 }: {
-  onPress?: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-  active?: boolean;
-  size?: number;
+  onPress?: () => void; disabled?: boolean; children: React.ReactNode; size?: number;
 }) {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      {...pressable}
       style={({ pressed }) => ({
         width: size,
         height: size,
         borderRadius: radius.full,
-        backgroundColor: active ? C.surface2 : C.surface1,
-        borderWidth: 1,
-        borderColor: active ? C.hairline : C.hairlineSoft,
+        backgroundColor: pressed
+          ? (isDark ? "rgba(255,255,255,0.26)" : "rgba(0,0,0,0.12)")
+          : (isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.06)"),
         alignItems: "center",
         justifyContent: "center",
         transform: [{ scale: pressed && !disabled ? 0.94 : 1 }],
-        opacity: disabled ? 0.45 : 1,
+        opacity: disabled ? 0.5 : 1,
       })}
     >
       {children}
+    </Pressable>
+  );
+}
+
+/**
+ * Filter / tab chip. Default is translucent, active flips to an opaque fill —
+ * the chip "lifts" rather than changing hue. Colour-only transition because
+ * these get hit constantly.
+ */
+export function Chip({
+  label, active, onPress, flex,
+}: { label: string; active: boolean; onPress: () => void; flex?: boolean }) {
+  const { C, isDark } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      {...toggleable}
+      style={{
+        flex: flex ? 1 : undefined,
+        minHeight: 40,
+        paddingVertical: 9,
+        paddingHorizontal: 16,
+        borderRadius: radius.full,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: active
+          ? C.primary
+          : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)"),
+      }}
+    >
+      <Text
+        style={{
+          ...T.buttonMd,
+          color: active ? C.onPrimary : C.inkMuted,
+        } as TextStyle}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -178,18 +165,13 @@ export function IconButton({
 /* Surfaces                                                            */
 /* ------------------------------------------------------------------ */
 
-/** Surface-lift card. `featured` steps up one level (surface1 -> surface2). */
+/** 8px-radius card, flat on canvas. The system has no resting shadow. */
 export function Card({
-  children,
-  featured,
-  padding = 24,
-  float,
-  style,
+  children, padding = space.lg, tone = "card", style,
 }: {
   children: React.ReactNode;
-  featured?: boolean;
   padding?: number;
-  float?: boolean;
+  tone?: "card" | "elevated";
   style?: ViewStyle;
 }) {
   const { C } = useTheme();
@@ -197,13 +179,10 @@ export function Card({
     <View
       style={[
         {
-          backgroundColor: featured ? C.surface2 : C.surface1,
-          borderRadius: radius.xl,
+          backgroundColor: tone === "elevated" ? C.surface1 : C.surface2,
+          borderRadius: radius.md,
           padding,
-          borderWidth: 1,
-          borderColor: featured ? C.hairline : C.hairlineSoft,
         },
-        float ? floatShadow : null,
         style,
       ]}
     >
@@ -212,56 +191,35 @@ export function Card({
   );
 }
 
-/**
- * Gradient spotlight card. Scarce by design — the spec allows one or two per
- * long page; three reads as a moodboard.
- */
-export function Spotlight({
-  children,
-  wash = VIOLET_WASH,
-  fallback,
-  padding = 32,
-  style,
+/** Full-bleed band — the chapter device. Structural surfaces stay at 0 radius. */
+export function Band({
+  children, tone, style,
 }: {
   children: React.ReactNode;
-  wash?: string;
-  fallback?: string;
-  padding?: number;
+  tone: "blue" | "dark" | "canvas";
   style?: ViewStyle;
 }) {
   const { C } = useTheme();
-  return (
-    <View
-      style={[
-        {
-          borderRadius: radius.xxl,
-          padding,
-          overflow: "hidden",
-        },
-        gradient(wash, fallback ?? C.gradViolet),
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
+  const bg = tone === "blue" ? C.primary : tone === "dark" ? C.surface1 : C.canvas;
+  return <View style={[{ backgroundColor: bg, borderRadius: radius.none }, style]}>{children}</View>;
 }
 
-export function Divider({ soft, style }: { soft?: boolean; style?: ViewStyle }) {
+export function Divider({ style }: { style?: ViewStyle }) {
   const { C } = useTheme();
-  return (
-    <View style={[{ height: 1, backgroundColor: soft ? C.hairlineSoft : C.hairline }, style]} />
-  );
+  return <View style={[{ height: 1, backgroundColor: C.hairline }, style]} />;
+}
+
+/** The PS Plus gold accent bar — reserved for the top lineup. */
+export function GoldBar({ height = 4 }: { height?: number }) {
+  const { C } = useTheme();
+  return <View style={[{ height, width: "100%" }, gradient(GOLD_BAR, C.goldMid)]} />;
 }
 
 /* ------------------------------------------------------------------ */
 /* Position badge                                                      */
 /* ------------------------------------------------------------------ */
-/**
- * Surfaces stay monochrome; the position coding lives in the glyph color,
- * drawn only from the documented gradient family.
- */
-export function PosBadge({ pos, compact }: { pos: string; compact?: boolean }) {
+
+export function PosBadge({ pos }: { pos: string }) {
   const { POS, C } = useTheme();
   const colors = POS[pos] ?? { bg: C.surface2, fg: C.inkMuted };
   return (
@@ -269,15 +227,15 @@ export function PosBadge({ pos, compact }: { pos: string; compact?: boolean }) {
       style={{
         backgroundColor: colors.bg,
         borderRadius: radius.sm,
-        paddingHorizontal: compact ? 6 : 8,
-        paddingVertical: compact ? 3 : 4,
-        minWidth: compact ? 34 : 40,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        minWidth: 40,
         alignItems: "center",
-        borderWidth: 1,
-        borderColor: C.hairlineSoft,
       }}
     >
-      <Text style={{ ...T.caption, fontSize: 11, color: colors.fg } as TextStyle}>{pos}</Text>
+      <Text style={{ ...T.captionSm, fontWeight: "700", color: colors.fg } as TextStyle}>
+        {pos}
+      </Text>
     </View>
   );
 }

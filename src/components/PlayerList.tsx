@@ -12,10 +12,8 @@ export default function PlayerList({ players }: { players: Player[] }) {
   return (
     <View
       style={{
-        backgroundColor: C.surface1,
-        borderRadius: radius.xl,
-        borderWidth: 1,
-        borderColor: C.hairlineSoft,
+        backgroundColor: C.surface2,
+        borderRadius: radius.md,
         overflow: "hidden",
       }}
     >
@@ -23,18 +21,22 @@ export default function PlayerList({ players }: { players: Player[] }) {
         style={{
           flexDirection: "row",
           alignItems: "center",
+          gap: space.xs,
           paddingHorizontal: space.lg,
           paddingVertical: space.sm,
           borderBottomWidth: 1,
           borderBottomColor: C.hairline,
-          gap: space.xs,
         }}
       >
-        <Text style={{ ...T.micro, flex: 1, color: C.light } as TextStyle}>
+        <Text style={{ ...T.captionSm, flex: 1, color: C.inkFaint, letterSpacing: 0.8 } as TextStyle}>
           PLAYER ({players.length})
         </Text>
-        <Text style={{ ...T.micro, width: 64, textAlign: "right", color: C.light } as TextStyle}>SALARY</Text>
-        <Text style={{ ...T.micro, width: 46, textAlign: "right", color: C.light } as TextStyle}>PROJ</Text>
+        <Text style={{ ...T.captionSm, width: 66, textAlign: "right", color: C.inkFaint } as TextStyle}>
+          SALARY
+        </Text>
+        <Text style={{ ...T.captionSm, width: 46, textAlign: "right", color: C.inkFaint } as TextStyle}>
+          PROJ
+        </Text>
       </View>
 
       <FlatList
@@ -46,32 +48,28 @@ export default function PlayerList({ players }: { players: Player[] }) {
             style={{
               flexDirection: "row",
               alignItems: "center",
+              gap: space.xs,
               paddingHorizontal: space.lg,
               paddingVertical: 11,
               borderBottomWidth: 1,
               borderBottomColor: C.hairlineSoft,
-              gap: space.xs,
             }}
           >
             <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: space.xs }}>
-              <PosBadge pos={item.pos} compact />
+              <PosBadge pos={item.pos} />
               <View style={{ gap: 1 }}>
-                <Text style={{ ...T.bodySm, color: C.ink } as TextStyle}>{item.name}</Text>
-                <Text style={{ ...T.micro, color: C.inkMuted } as TextStyle}>
+                <Text style={{ ...T.bodySm, fontWeight: "500", color: C.ink } as TextStyle}>
+                  {item.name}
+                </Text>
+                <Text style={{ ...T.captionSm, color: C.inkFaint } as TextStyle}>
                   {item.team}{item.opp ? ` vs ${item.opp}` : ""}
                 </Text>
               </View>
             </View>
-            <Text
-              {...tnum}
-              style={{ ...T.micro, width: 64, textAlign: "right", color: C.inkMuted } as TextStyle}
-            >
+            <Text {...tnum} style={{ ...T.captionMd, width: 66, textAlign: "right", color: C.inkMuted } as TextStyle}>
               {item.salary ? currency(item.salary) : "—"}
             </Text>
-            <Text
-              {...tnum}
-              style={{ ...T.bodySm, width: 46, textAlign: "right", color: C.ink } as TextStyle}
-            >
+            <Text {...tnum} style={{ ...T.bodySm, fontWeight: "600", width: 46, textAlign: "right", color: C.ink } as TextStyle}>
               {item.proj.toFixed(1)}
             </Text>
           </View>

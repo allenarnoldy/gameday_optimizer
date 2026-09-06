@@ -6,7 +6,7 @@ import {
   lightPOS, darkPOS,
   lightRANK, darkRANK,
 } from "./theme";
-import { installFramerFonts } from "./fonts";
+import { installFonts } from "./fonts";
 
 type ThemeCtx = {
   isDark: boolean;
@@ -25,13 +25,13 @@ const ThemeContext = createContext<ThemeCtx>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Framer's identity is dark — the brand mode is the default, not the
-  // system preference. Light is available as the documented inverse.
+  // PlayStation ships both canvas modes; dark is the editorial/product one
+  // and the right default for a gaming tool.
   const [isDark, setIsDark] = useState(true);
 
   const toggle = useCallback(() => setIsDark(d => !d), []);
 
-  useEffect(() => { installFramerFonts(); }, []);
+  useEffect(() => { installFonts(); }, []);
 
   // Keep the document canvas in sync so overscroll doesn't reveal a
   // mismatched ground behind the app.

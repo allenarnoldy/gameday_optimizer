@@ -1,8 +1,8 @@
 import React from "react";
-import { View, Text, TextInput, Pressable, TextStyle, useWindowDimensions } from "react-native";
+import { View, Text, TextInput, TextStyle, useWindowDimensions } from "react-native";
 import { useTheme } from "../ThemeContext";
 import { radius, space, type as T } from "../theme";
-import { Card, Divider } from "./ui";
+import { Card, Chip, Divider } from "./ui";
 import { tnum } from "../fonts";
 
 type Props = {
@@ -14,73 +14,45 @@ type Props = {
   window3pm: boolean; setWindow3pm: (b: boolean) => void;
 };
 
-/** Field label — caption tier, ink-muted. Hierarchy is ink -> ink-muted only. */
 function Label({ children }: { children: React.ReactNode }) {
   const { C } = useTheme();
   return (
-    <Text style={{ ...T.caption, color: C.inkMuted, marginBottom: space.xs } as TextStyle}>
+    <Text
+      style={{
+        ...T.captionSm,
+        textTransform: "uppercase",
+        letterSpacing: 0.9,
+        color: C.inkFaint,
+        marginBottom: space.xs,
+      } as TextStyle}
+    >
       {children}
     </Text>
   );
 }
 
-/**
- * Pill toggle. The spec marks selection with a surface lift, but on a
- * near-black canvas that reads as "slightly darker black" — the on-state has
- * to be unmistakable in a tool, so it takes the accent fill.
- */
-function TabPill({
-  label, active, onPress, flex,
-}: { label: string; active: boolean; onPress: () => void; flex?: boolean }) {
-  const { C } = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: flex ? 1 : undefined,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: radius.pill,
-        minHeight: 40,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: active ? C.primary : "transparent",
-        transform: [{ scale: pressed ? 0.97 : 1 }],
-      })}
-    >
-      <Text
-        style={{
-          ...T.button,
-          fontWeight: active ? "600" : "500",
-          color: active ? C.onPrimary : C.inkMuted,
-        } as TextStyle}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
+/** 4px radius, 48px tall. Focus is a 2px brand-blue inset border, no halo. */
 function NumField({
   value, onChangeText, placeholder,
 }: { value: string; onChangeText: (t: string) => void; placeholder?: string }) {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   return (
     <TextInput
       keyboardType="numeric"
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={C.light}
+      placeholderTextColor={C.inkFaint}
       {...tnum}
       style={{
-        backgroundColor: C.surface2,
-        borderRadius: radius.md,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
+        backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#ffffff",
+        borderRadius: radius.sm,
+        height: 48,
+        paddingHorizontal: space.md,
         borderWidth: 1,
         borderColor: C.hairline,
-        ...T.body,
+        ...T.bodySm,
+        fontWeight: "500",
         color: C.ink,
       } as TextStyle}
     />
@@ -88,9 +60,8 @@ function NumField({
 }
 
 export default function Controls(props: Props) {
-  const { C } = useTheme();
   const { width } = useWindowDimensions();
-  const narrow = width < 560;
+  const narrow = width < 620;
   const {
     scoring, setScoring,
     cap, setCap, topN, setTopN, maxPerTeam, setMaxPerTeam,
@@ -100,23 +71,12 @@ export default function Controls(props: Props) {
   return (
     <Card padding={space.lg} style={{ gap: space.lg }}>
 
-      {/* Scoring + game window sit on one line at desktop width */}
       <View style={{ flexDirection: narrow ? "column" : "row", gap: space.lg }}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1.4 }}>
           <Label>Scoring</Label>
-          <View
-            style={{
-              flexDirection: "row",
-              gap: space.xxs,
-              backgroundColor: C.canvas,
-              borderRadius: radius.pill,
-              padding: 4,
-              borderWidth: 1,
-              borderColor: C.hairlineSoft,
-            }}
-          >
+          <View style={{ flexDirection: "row", gap: space.xs }}>
             {(["ppr", "half", "std"] as const).map(s => (
-              <TabPill
+              <Chip
                 key={s}
                 flex
                 label={s === "ppr" ? "PPR" : s === "half" ? "Half" : "Standard"}
@@ -128,29 +88,18 @@ export default function Controls(props: Props) {
         </View>
 
         <View style={{ flex: 1 }}>
-          <Label>Game window</Label>
-          <View
-            style={{
-              flexDirection: "row",
-              gap: space.xxs,
-              backgroundColor: C.canvas,
-              borderRadius: radius.pill,
-              padding: 4,
-              borderWidth: 1,
-              borderColor: C.hairlineSoft,
-            }}
-          >
-            <TabPill flex label="Noon" active={windowNoon} onPress={() => setWindowNoon(!windowNoon)} />
-            <TabPill flex label="3 PM" active={window3pm} onPress={() => setWindow3pm(!window3pm)} />
+          <Label>Kickoff window</Label>
+          <View style={{ flexDirection: "row", gap: space.xs }}>
+            <Chip flex label="Noon" active={windowNoon} onPress={() => setWindowNoon(!windowNoon)} />
+            <Chip flex label="3 PM" active={window3pm} onPress={() => setWindow3pm(!window3pm)} />
           </View>
         </View>
       </View>
 
-      <Divider soft />
+      <Divider />
 
-      {/* Numeric constraints */}
       <View style={{ flexDirection: "row", gap: space.sm }}>
-        <View style={{ flex: 1.2 }}>
+        <View style={{ flex: 1.3 }}>
           <Label>Salary cap</Label>
           <NumField value={String(cap)} onChangeText={t => setCap(Number(t.replace(/\D/g, "") || 0))} />
         </View>

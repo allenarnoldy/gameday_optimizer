@@ -1,11 +1,12 @@
 /**
- * Framer design system tokens.
- * Source: DESIGN-framer.md (Framer-design-analysis, alpha).
+ * PlayStation design system tokens.
+ * Source: DESIGN-playstation.md (PlayStation-design-analysis, alpha).
  *
- * The brand is dark-native: near-black canvas, hierarchy carried by surface
- * lift (canvas -> surface1 -> surface2) rather than by chromatic fills.
- * `accent` (#0099ff) is a signal color only — links, focus, selection.
- * The gradient family is the atmosphere device and belongs on cards.
+ * Three-canvas system: pure black, pure white, and PlayStation Blue as the
+ * full-bleed "action moment" band. Chrome is flat — no resting shadows, no
+ * gradients except the PS Plus gold. Display type runs at weight 300 with
+ * POSITIVE tracking, which is the brand's airy editorial voice; scale, not
+ * weight, is what makes it bold.
  */
 
 export type ColorSet = {
@@ -19,28 +20,31 @@ export type ColorSet = {
   // Text
   ink: string;
   inkMuted: string;
+  inkFaint: string;
 
-  // Signal
-  accent: string;
-  success: string;
-
-  // CTA pill
+  // Brand
   primary: string;
+  primaryPressed: string;
+  primaryActive: string;
   onPrimary: string;
+  link: string;
 
-  // Gradient family (cards only)
-  gradMagenta: string;
-  gradViolet: string;
-  gradOrange: string;
-  gradCoral: string;
+  // Accents
+  commerce: string;
+  warning: string;
+  goldStart: string;
+  goldMid: string;
+  goldEnd: string;
 
-  // Legacy aliases so any unmigrated call site still resolves
+  // Legacy aliases so no call site breaks mid-migration
   bg: string;
   card: string;
   border: string;
   text: string;
   muted: string;
   light: string;
+  accent: string;
+  success: string;
   primaryBg: string;
   primaryDark: string;
 };
@@ -52,234 +56,202 @@ export type RankEntry = { color: string; bg: string };
 /* Colors                                                              */
 /* ------------------------------------------------------------------ */
 
-// The brand mode. Every token here is lifted straight from the spec.
+/** Dark canvas mode — the editorial/product surface. */
 export const darkColors: ColorSet = {
-  canvas: '#090909',
-  surface1: '#141414',
-  surface2: '#1c1c1c',
-  hairline: '#262626',
-  hairlineSoft: '#1a1a1a',
+  canvas: '#000000',
+  surface1: '#121314',
+  surface2: '#181818',
+  hairline: 'rgba(229,229,229,0.2)',
+  hairlineSoft: 'rgba(229,229,229,0.12)',
 
   ink: '#ffffff',
-  inkMuted: '#999999',
+  inkMuted: '#cccccc',
+  inkFaint: 'rgba(229,229,229,0.55)',
 
-  accent: '#0099ff',
-  success: '#22c55e',
-
-  // Departs from the spec, which reserves the blue as a signal color and
-  // keeps CTAs white. On a working tool the white pill reads as chrome
-  // rather than as "the action", so the accent is promoted to the CTA fill
-  // and to the on-state of every toggle.
-  primary: '#0099ff',
+  // The brand blue is precise and does not change between modes.
+  primary: '#0070d1',
+  primaryPressed: '#0064b7',
+  primaryActive: '#004d8d',
   onPrimary: '#ffffff',
+  link: '#53b1ff',
 
-  gradMagenta: '#d44df0',
-  gradViolet: '#6a4cf5',
-  gradOrange: '#ff7a3d',
-  gradCoral: '#ff5577',
+  commerce: '#d53b00',
+  warning: '#c81b3a',
+  goldStart: '#ffce21',
+  goldMid: '#f5a623',
+  goldEnd: '#ee8e00',
 
-  bg: '#090909',
-  card: '#141414',
-  border: '#262626',
+  bg: '#000000',
+  card: '#181818',
+  border: 'rgba(229,229,229,0.2)',
   text: '#ffffff',
-  muted: '#999999',
-  light: '#5c5c5c',
-  primaryBg: '#1c1c1c',
-  primaryDark: '#e6e6e6',
+  muted: '#cccccc',
+  light: 'rgba(229,229,229,0.55)',
+  accent: '#53b1ff',
+  success: '#0070d1',
+  primaryBg: '#121314',
+  primaryDark: '#0064b7',
 };
 
-// Inverse mode, built from the spec's own `inverse-canvas` / `inverse-ink`
-// tokens rather than invented. Surface lift runs the other direction.
+/** Light canvas mode — the utility surface (support / listing pages). */
 export const lightColors: ColorSet = {
   canvas: '#ffffff',
-  surface1: '#f5f5f5',
-  surface2: '#ebebeb',
-  hairline: '#e0e0e0',
-  hairlineSoft: '#f0f0f0',
+  surface1: '#f3f3f3',
+  surface2: '#f5f7fa',
+  hairline: '#e4e4e4',
+  hairlineSoft: '#f3f3f3',
 
   ink: '#000000',
-  inkMuted: '#6b6b6b',
+  inkMuted: 'rgba(0,0,0,0.6)',
+  inkFaint: '#6b6b6b',
 
-  accent: '#0086e0',
-  success: '#16a34a',
-
-  // Deepened so white labels clear AA against the fill on a white canvas.
-  primary: '#0072cc',
+  primary: '#0070d1',
+  primaryPressed: '#0064b7',
+  primaryActive: '#004d8d',
   onPrimary: '#ffffff',
+  link: '#0064b7',
 
-  gradMagenta: '#b830d4',
-  gradViolet: '#5a3ce0',
-  gradOrange: '#e05f22',
-  gradCoral: '#e0335c',
+  commerce: '#d53b00',
+  warning: '#c81b3a',
+  goldStart: '#ffce21',
+  goldMid: '#f5a623',
+  goldEnd: '#ee8e00',
 
   bg: '#ffffff',
-  card: '#f5f5f5',
-  border: '#e0e0e0',
+  card: '#f5f7fa',
+  border: '#e4e4e4',
   text: '#000000',
-  muted: '#6b6b6b',
-  light: '#a3a3a3',
-  primaryBg: '#ebebeb',
-  primaryDark: '#1a1a1a',
+  muted: 'rgba(0,0,0,0.6)',
+  light: '#6b6b6b',
+  accent: '#0064b7',
+  success: '#0070d1',
+  primaryBg: '#f3f3f3',
+  primaryDark: '#0064b7',
 };
 
 /* ------------------------------------------------------------------ */
 /* Position coding                                                     */
 /* ------------------------------------------------------------------ */
 /**
- * Positions need to be scannable, but the spec forbids a second chromatic
- * accent family. So the chips stay monochrome surfaces and the coding lives
- * in the glyph color, drawn only from the documented gradient palette.
+ * Every hue here is drawn from the documented PlayStation palette
+ * (commerce orange, warning red, link blue, PS Plus gold, Marathon yellow).
+ * The spec reserves some of them for store CTAs and PS Plus chrome, so this
+ * is a deliberate departure: a DFS pool has to be scannable by position, and
+ * the brief asked for bold. Chips stay flat with no border.
  */
-
 export const darkPOS: PosColors = {
-  QB:  { bg: '#1c1c1c', fg: '#ff5577' },
-  RB:  { bg: '#1c1c1c', fg: '#ff7a3d' },
-  WR:  { bg: '#1c1c1c', fg: '#d44df0' },
-  TE:  { bg: '#1c1c1c', fg: '#8b6cff' },
-  DST: { bg: '#1c1c1c', fg: '#999999' },
-  K:   { bg: '#1c1c1c', fg: '#999999' },
+  QB:  { bg: 'rgba(200,27,58,0.18)',  fg: '#ff5c78' },
+  RB:  { bg: 'rgba(213,59,0,0.18)',   fg: '#ff8551' },
+  WR:  { bg: 'rgba(83,177,255,0.18)', fg: '#53b1ff' },
+  TE:  { bg: 'rgba(245,166,35,0.18)', fg: '#ffbe4d' },
+  DST: { bg: 'rgba(222,255,32,0.16)', fg: '#deff20' },
+  K:   { bg: 'rgba(229,229,229,0.14)', fg: '#cccccc' },
 };
 
 export const lightPOS: PosColors = {
-  QB:  { bg: '#ebebeb', fg: '#d92a4f' },
-  RB:  { bg: '#ebebeb', fg: '#c4511a' },
-  WR:  { bg: '#ebebeb', fg: '#a821c4' },
-  TE:  { bg: '#ebebeb', fg: '#5a3ce0' },
-  DST: { bg: '#ebebeb', fg: '#6b6b6b' },
-  K:   { bg: '#ebebeb', fg: '#6b6b6b' },
+  QB:  { bg: 'rgba(200,27,58,0.12)',  fg: '#c81b3a' },
+  RB:  { bg: 'rgba(213,59,0,0.12)',   fg: '#d53b00' },
+  WR:  { bg: 'rgba(0,112,209,0.12)',  fg: '#0064b7' },
+  TE:  { bg: 'rgba(238,142,0,0.16)',  fg: '#b06400' },
+  DST: { bg: 'rgba(154,178,0,0.18)',  fg: '#6e7f00' },
+  K:   { bg: 'rgba(0,0,0,0.06)',      fg: '#6b6b6b' },
 };
 
-/**
- * Lineup ranking. Framer marks hierarchy with surface lift, not medals — so
- * rank 1 gets the gradient spotlight treatment (the brand's scarce atmosphere
- * device), rank 2 lifts to surface2, and everything below sits on surface1.
- */
+/** Rank 1 takes the PS Plus gold; the rest sit flat on the card surface. */
 export const darkRANK: RankEntry[] = [
-  { color: '#6a4cf5', bg: '#1c1c1c' },
-  { color: '#262626', bg: '#1c1c1c' },
-  { color: '#262626', bg: '#141414' },
+  { color: '#f5a623', bg: '#121314' },
+  { color: 'rgba(229,229,229,0.2)', bg: '#181818' },
+  { color: 'rgba(229,229,229,0.2)', bg: '#181818' },
 ];
 
 export const lightRANK: RankEntry[] = [
-  { color: '#5a3ce0', bg: '#ebebeb' },
-  { color: '#e0e0e0', bg: '#ebebeb' },
-  { color: '#e0e0e0', bg: '#f5f5f5' },
+  { color: '#f5a623', bg: '#f3f3f3' },
+  { color: '#e4e4e4', bg: '#f5f7fa' },
+  { color: '#e4e4e4', bg: '#f5f7fa' },
 ];
 
 /* ------------------------------------------------------------------ */
 /* Typography                                                          */
 /* ------------------------------------------------------------------ */
 /**
- * GT Walsheim is proprietary. Per the spec's own substitution note we use
- * Inter at 600-700 for display with the tracking tightened by hand, and Inter
- * Variable for body with the documented OpenType character variants (applied
- * globally on web in `fonts.ts`).
- *
- * Letter-spacing is kept as a PERCENTAGE of size, per the Do's list: reduce
- * the size at small breakpoints, never the compression.
+ * PlayStation SST is proprietary. Per the spec's substitution note, the
+ * display tier uses Roboto Light (300) and the chrome/body tier uses Inter.
+ * The positive tracking (+0.1 to +0.45px) is preserved — the spec is explicit
+ * that the spacing is what makes the light weight read as premium.
  */
-
 export const DISPLAY_FONT =
-  '"Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  '"Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif';
 export const BODY_FONT =
-  '"Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  '"Inter", "Helvetica Neue", Helvetica, Arial, sans-serif';
 
 export type TypeToken = {
   fontFamily: string;
   fontSize: number;
-  fontWeight:
-    | '400' | '500' | '600' | '700';
+  fontWeight: '300' | '400' | '500' | '600' | '700';
   lineHeight: number;
   letterSpacing: number;
 };
 
-const display = (fontSize: number, trackPct: number, lh: number): TypeToken => ({
+const display = (fontSize: number, letterSpacing: number): TypeToken => ({
   fontFamily: DISPLAY_FONT,
   fontSize,
-  fontWeight: '600',
-  lineHeight: Math.round(fontSize * lh),
-  letterSpacing: fontSize * trackPct,
+  fontWeight: '300',
+  lineHeight: Math.round(fontSize * 1.25),
+  letterSpacing,
 });
 
 export const type = {
-  // -5% tracking is the brand signature on the display tier.
-  displayXxl: display(110, -0.05, 0.85),
-  displayXl: display(85, -0.05, 0.95),
-  displayLg: display(62, -0.05, 1.0),
-  displayMd: display(32, -0.031, 1.13),
+  displayXl: display(54, -0.1),
+  displayLg: display(44, 0.1),
+  displayMd: display(35, 0),
+  headingXl: display(28, 0.1),
+  headingLg: display(22, 0.1),
 
-  headline: {
-    fontFamily: BODY_FONT,
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 26,
-    letterSpacing: -0.8,
+  headingMd: {
+    fontFamily: BODY_FONT, fontSize: 18, fontWeight: '600',
+    lineHeight: 18, letterSpacing: 0,
   },
-  subhead: {
-    fontFamily: BODY_FONT,
-    fontSize: 24,
-    fontWeight: '400',
-    lineHeight: 31,
-    letterSpacing: -0.01,
+  bodyMd: {
+    fontFamily: BODY_FONT, fontSize: 18, fontWeight: '400',
+    lineHeight: 27, letterSpacing: 0.1,
   },
-  bodyLg: {
-    fontFamily: BODY_FONT,
-    fontSize: 18,
-    fontWeight: '400',
-    lineHeight: 23,
-    letterSpacing: -0.18,
-  },
-  body: {
-    fontFamily: BODY_FONT,
-    fontSize: 15,
-    fontWeight: '400',
-    lineHeight: 20,
-    letterSpacing: -0.15,
+  bodyStrong: {
+    fontFamily: BODY_FONT, fontSize: 18, fontWeight: '500',
+    lineHeight: 23, letterSpacing: 0.4,
   },
   bodySm: {
-    fontFamily: BODY_FONT,
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 20,
-    letterSpacing: -0.14,
+    fontFamily: BODY_FONT, fontSize: 16, fontWeight: '400',
+    lineHeight: 24, letterSpacing: 0,
   },
-  caption: {
-    fontFamily: BODY_FONT,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 16,
-    letterSpacing: -0.13,
+  captionMd: {
+    fontFamily: BODY_FONT, fontSize: 14, fontWeight: '400',
+    lineHeight: 21, letterSpacing: 0,
   },
-  micro: {
-    fontFamily: BODY_FONT,
-    fontSize: 12,
-    fontWeight: '400',
-    lineHeight: 14,
-    letterSpacing: -0.12,
+  captionSm: {
+    fontFamily: BODY_FONT, fontSize: 12, fontWeight: '500',
+    lineHeight: 18, letterSpacing: 0,
   },
-  button: {
-    fontFamily: BODY_FONT,
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 14,
-    letterSpacing: -0.14,
+  buttonLg: {
+    fontFamily: BODY_FONT, fontSize: 18, fontWeight: '700',
+    lineHeight: 23, letterSpacing: 0.45,
+  },
+  buttonMd: {
+    fontFamily: BODY_FONT, fontSize: 14, fontWeight: '700',
+    lineHeight: 18, letterSpacing: 0.324,
   },
 } as const;
 
-/**
- * Display type scales down across breakpoints while holding the -5% tracking.
- * 110 -> 62 (tablet) -> 32 (mobile), per the responsive spec.
- */
+/** Hero scales 54 -> 44 -> 32 -> 28 down the breakpoint stack, per the spec. */
 export function heroType(width: number): TypeToken {
-  if (width >= 1199) return display(96, -0.05, 0.9);
-  if (width >= 810) return display(62, -0.05, 1.0);
-  if (width >= 480) return display(44, -0.05, 1.02);
-  return display(34, -0.05, 1.05);
+  if (width >= 1280) return display(54, -0.1);
+  if (width >= 768) return display(44, 0.1);
+  if (width >= 480) return display(32, 0.1);
+  return display(28, 0.1);
 }
 
 export function sectionType(width: number): TypeToken {
-  if (width >= 810) return display(32, -0.031, 1.13);
-  return display(26, -0.031, 1.15);
+  if (width >= 768) return display(28, 0.1);
+  return display(22, 0.1);
 }
 
 /* ------------------------------------------------------------------ */
@@ -287,47 +259,38 @@ export function sectionType(width: number): TypeToken {
 /* ------------------------------------------------------------------ */
 
 export const radius = {
-  xs: 4,
-  sm: 6,
-  md: 10,
-  lg: 15,
-  xl: 20,
-  xxl: 30,
-  pill: 100,
+  none: 0,
+  sm: 4,
+  md: 8,
+  lg: 16,
   full: 9999,
 } as const;
 
-// Framer works in 5px increments (5/10/15/20/30) rather than the usual 4/8/16.
 export const space = {
-  hair: 1,
   xxs: 4,
   xs: 8,
   sm: 12,
-  md: 15,
-  lg: 20,
-  xl: 30,
-  xxl: 40,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
   section: 96,
 } as const;
 
-export const MAX_WIDTH = 1100;
+export const MAX_WIDTH = 1280;
+/** The working column. Controls stay readable rather than stretching. */
+export const APP_WIDTH = 900;
 
-/* ------------------------------------------------------------------ */
-/* Elevation                                                           */
-/* ------------------------------------------------------------------ */
-/** Level 2: light top edge + soft drop, for floating cards. */
-export const floatShadow = {
+/** Level 2 — cards lift only on press; there is no resting shadow. */
+export const pressShadow = {
   shadowColor: '#000',
-  shadowOffset: { width: 0, height: 10 },
-  shadowOpacity: 0.25,
-  shadowRadius: 30,
-  elevation: 8,
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.16,
+  shadowRadius: 12,
+  elevation: 4,
 } as const;
 
-/** Level 3: the blue-tinted selection ring. The only chromatic depth signal. */
-export const focusRing = 'rgba(0, 153, 255, 0.15)';
-
-// Static exports kept for any file that hasn't migrated to useTheme()
+// Static exports for any file that hasn't migrated to useTheme()
 export const C = darkColors;
 export const POS = darkPOS;
 export const RANK = darkRANK;

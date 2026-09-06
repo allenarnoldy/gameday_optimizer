@@ -16,20 +16,17 @@ import LineupCard from "../components/LineupCard";
 import PlayerPanel from "../components/PlayerPanel";
 import { buildTopLineups } from "../optimizer";
 import { useTheme } from "../ThemeContext";
-import { radius, space, type as T, sectionType } from "../theme";
-import { Card, Divider, IconButton, PillButton } from "../components/ui";
-
-/** The app is a tool, so the working column is the whole page. */
-const APP_WIDTH = 820;
+import { radius, space, type as T, heroType, APP_WIDTH } from "../theme";
+import { Card, IconButton, PillButton } from "../components/ui";
+import { tnum } from "../fonts";
 
 export default function HomeScreen() {
   const { C, isDark, toggle } = useTheme();
   const { season, week } = getCurrentNFLWeek();
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 810;
+  const isDesktop = width >= 768;
   const isNarrow = width < 560;
-  const gutter = isDesktop ? space.xl : space.lg;
-  const ctaStyle = isNarrow ? { width: "100%" as const } : undefined;
+  const gutter = isDesktop ? space.xl : space.md;
 
   const [scoring, setScoring] = useState<"ppr" | "half" | "std">("ppr");
   const [players, setPlayers] = useState<Player[]>([]);
@@ -55,6 +52,8 @@ export default function HomeScreen() {
   const [maxPerTeam, setMaxPerTeam] = useState<number | null>(null);
   const [topN, setTopN] = useState<number>(2);
   const [lineups, setLineups] = useState<Lineup[] | null>(null);
+  // Bumped per solve so result cards remount and replay their stagger.
+  const [runId, setRunId] = useState(0);
 
   const loadDemo = useCallback(() => {
     setPlayers(DEMO_PLAYERS.map(p => ({ ...p, window: labelWindowLocal(p.gameTime) })));
@@ -140,88 +139,88 @@ export default function HomeScreen() {
     setTimeout(() => {
       const result = buildTopLineups(filteredPlayers, rules, cap, topN, maxPerTeam, lockedIds);
       setLineups(result);
+      setRunId(n => n + 1);
       setGenerating(false);
     }, 0);
   };
 
-  const title = sectionType(width);
-
-  /** Status dot + label, as in the original build. */
-  const StatusDot = ({ on, children }: { on: boolean; children: React.ReactNode }) => (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      <View
-        style={{
-          width: 6, height: 6, borderRadius: radius.full,
-          backgroundColor: on ? C.primary : C.light,
-        }}
-      />
-      <Text style={{ ...T.caption, color: C.inkMuted } as TextStyle}>{children}</Text>
-    </View>
-  );
+  const hero = heroType(width);
+  const column = { width: "100%" as const, maxWidth: APP_WIDTH, alignSelf: "center" as const };
 
   return (
     <>
       <ScrollView style={{ backgroundColor: C.canvas }}>
-        <View style={{ paddingHorizontal: gutter }}>
+
+        {/* ---- Primary nav: black band, 48px ---- */}
+        <View style={{ backgroundColor: C.canvas, paddingHorizontal: gutter }}>
           <View
             style={{
-              width: "100%", maxWidth: APP_WIDTH, alignSelf: "center",
-              paddingTop: space.xl, gap: space.lg,
+              ...column, height: 48, flexDirection: "row",
+              alignItems: "center", justifyContent: "space-between",
             }}
           >
-
-            {/* Header — eyebrow + title, actions right */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: space.md,
-              }}
-            >
-              <View style={{ gap: 4, flex: 1 }}>
-                <Text
-                  style={{
-                    ...T.micro,
-                    fontWeight: "700",
-                    letterSpacing: 1.4,
-                    color: C.primary,
-                  } as TextStyle}
-                >
-                  NFL DAILY FANTASY
-                </Text>
-                <Text style={{ ...title, color: C.ink } as TextStyle}>Gameday Optimizer</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.xs }}>
+              <View
+                style={{
+                  width: 24, height: 24, borderRadius: radius.full,
+                  backgroundColor: C.primary, alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff", lineHeight: 16 }}>G</Text>
               </View>
-
-              <View style={{ flexDirection: "row", gap: space.xs, paddingTop: 4 }}>
-                <IconButton onPress={toggle} size={38}>
-                  <Text style={{ fontSize: 15, lineHeight: 18, color: C.ink }}>
-                    {isDark ? "☀" : "☾"}
-                  </Text>
-                </IconButton>
-                <IconButton onPress={fetchAll} disabled={!!loading} size={38}>
-                  {loading
-                    ? <ActivityIndicator size="small" color={C.inkMuted} />
-                    : <Text style={{ fontSize: 15, color: C.ink }}>↻</Text>}
-                </IconButton>
-              </View>
+              <Text style={{ ...T.bodyStrong, fontSize: 15, color: C.ink } as TextStyle}>
+                GAMEDAY
+              </Text>
             </View>
 
-            {/* Slate status */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, flexWrap: "wrap" }}>
-              <Text style={{ ...T.caption, color: C.inkMuted } as TextStyle}>
-                {season} · Week {week}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.xs }}>
+              <IconButton onPress={toggle} size={36}>
+                <Text style={{ fontSize: 14, color: C.ink }}>{isDark ? "☀" : "☾"}</Text>
+              </IconButton>
+              <IconButton onPress={fetchAll} disabled={!!loading} size={36}>
+                {loading
+                  ? <ActivityIndicator size="small" color={C.ink} />
+                  : <Text style={{ fontSize: 15, color: C.ink }}>↻</Text>}
+              </IconButton>
+            </View>
+          </View>
+        </View>
+
+        {/* ---- The blue band: the system's action moment ---- */}
+        <View style={{ backgroundColor: C.primary, paddingHorizontal: gutter }}>
+          <View style={{ ...column, paddingVertical: isDesktop ? space.xl : space.lg, gap: space.xs }}>
+            <Text
+              style={{
+                ...T.captionSm,
+                textTransform: "uppercase",
+                letterSpacing: 1.6,
+                color: "rgba(255,255,255,0.75)",
+              } as TextStyle}
+            >
+              NFL Daily Fantasy · {season} Week {week}
+            </Text>
+            <Text style={{ ...hero, color: "#ffffff" } as TextStyle}>Gameday Optimizer</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, flexWrap: "wrap", marginTop: 2 }}>
+              <Text {...tnum} style={{ ...T.captionMd, color: "rgba(255,255,255,0.85)" } as TextStyle}>
+                {filteredPlayers.length} players in pool
               </Text>
-              <StatusDot on={filteredPlayers.length > 0}>
-                {filteredPlayers.length} players
-              </StatusDot>
-              {lockedIds.size > 0 && <StatusDot on>{lockedIds.size} locked</StatusDot>}
+              {lockedIds.size > 0 && (
+                <Text {...tnum} style={{ ...T.captionMd, color: "rgba(255,255,255,0.85)" } as TextStyle}>
+                  {lockedIds.size} locked
+                </Text>
+              )}
               {loading && (
-                <Text style={{ ...T.caption, color: C.inkMuted } as TextStyle}>{loading}</Text>
+                <Text style={{ ...T.captionMd, color: "rgba(255,255,255,0.85)" } as TextStyle}>
+                  {loading}
+                </Text>
               )}
             </View>
+          </View>
+        </View>
 
-            {/* The controls are the show */}
+        {/* ---- Controls, immediately under the band ---- */}
+        <View style={{ paddingHorizontal: gutter, paddingTop: space.lg }}>
+          <View style={{ ...column, gap: space.md }}>
             <Controls
               scoring={scoring} setScoring={setScoring}
               cap={cap} setCap={setCap}
@@ -236,53 +235,60 @@ export default function HomeScreen() {
                 label={generating ? "Solving…" : "Generate optimal lineups"}
                 onPress={handleGenerate}
                 disabled={!canGenerate}
-                size="lg"
-                style={isNarrow ? { width: "100%" } : { flexGrow: 1, minWidth: 260 }}
+                style={isNarrow ? { width: "100%" } : { flexGrow: 1, minWidth: 280 }}
               >
-                {generating ? <ActivityIndicator size="small" color={C.onPrimary} /> : null}
+                {generating ? <ActivityIndicator size="small" color="#fff" /> : null}
               </PillButton>
               <PillButton
                 label={`Player pool · ${filteredPlayers.length}`}
                 onPress={() => setPanelOpen(true)}
                 variant="secondary"
-                size="lg"
-                style={ctaStyle}
+                style={isNarrow ? { width: "100%" } : undefined}
               />
             </View>
+          </View>
+        </View>
 
-            {/* Results */}
+        {/* ---- Results ---- */}
+        <View style={{ paddingHorizontal: gutter, paddingTop: space.lg }}>
+          <View style={{ ...column, gap: space.sm }}>
             {lineups && lineups.length > 0 ? (
-              <View style={{ gap: space.md, paddingTop: space.xs }}>
-                <Divider />
-                <Text style={{ ...T.caption, color: C.inkMuted } as TextStyle}>
+              <>
+                <Text
+                  style={{
+                    ...T.captionSm, textTransform: "uppercase", letterSpacing: 1,
+                    color: C.inkFaint, marginTop: space.xs,
+                  } as TextStyle}
+                >
                   {lineups.length} lineup{lineups.length === 1 ? "" : "s"} under {currency(cap)}
                 </Text>
                 {lineups.map((lu, i) => (
-                  <LineupCard key={i} lu={lu} index={i} />
+                  <LineupCard key={`${runId}-${i}`} lu={lu} index={i} />
                 ))}
-              </View>
+              </>
             ) : lineups ? (
-              <Card padding={space.lg}>
-                <Text style={{ ...T.bodySm, color: C.ink, marginBottom: 4 } as TextStyle}>
+              <Card>
+                <Text style={{ ...T.headingMd, color: C.ink, marginBottom: 6 } as TextStyle}>
                   No lineup fits.
                 </Text>
-                <Text style={{ ...T.caption, color: C.inkMuted } as TextStyle}>
-                  The pool can't fill every slot under {currency(cap)}. Widen the game windows,
+                <Text style={{ ...T.captionMd, color: C.inkMuted } as TextStyle}>
+                  The pool can't fill every slot under {currency(cap)}. Widen the kickoff windows,
                   raise the cap, or unlock a player.
                 </Text>
               </Card>
             ) : null}
-
-            {/* Footer — attribution only */}
-            <View style={{ paddingTop: space.lg, paddingBottom: space.xl, gap: space.sm }}>
-              <Divider soft />
-              <Text style={{ ...T.micro, color: C.light } as TextStyle}>
-                Projections from Sleeper · Salaries from DraftKings · Schedule from ESPN
-              </Text>
-            </View>
-
           </View>
         </View>
+
+        {/* ---- Footer ---- */}
+        <View style={{ paddingHorizontal: gutter, paddingTop: space.xl, paddingBottom: space.xl }}>
+          <View style={{ ...column }}>
+            <Text style={{ ...T.captionSm, color: C.inkFaint } as TextStyle}>
+              Projections from Sleeper · Salaries from DraftKings · Schedule from ESPN
+            </Text>
+          </View>
+        </View>
+
       </ScrollView>
 
       <PlayerPanel

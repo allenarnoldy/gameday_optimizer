@@ -1,1 +1,8 @@
 node_modules
+dist/
+.vercel
+
+# skills CLI (emilkowalski/skill)
+.agents/
+.claude/
+skills-lock.json
