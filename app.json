@@ -3,10 +3,22 @@
     "name": "Gameday Optimizer",
     "slug": "gameday-optimizer",
     "platforms": ["ios", "android", "web"],
+    "icon": "./assets/icon.png",
+    "ios": {
+      "supportsTablet": true,
+      "icon": "./assets/icon.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#010813"
+      }
+    },
     "web": {
       "name": "Gameday Optimizer",
       "shortName": "Gameday",
       "description": "NFL DFS Lineup Optimizer — find the best lineup within the salary cap",
+      "favicon": "./assets/favicon.png",
       "themeColor": "#090909",
       "backgroundColor": "#090909",
       "display": "standalone",

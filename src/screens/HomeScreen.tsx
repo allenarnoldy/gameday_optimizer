@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View, Text, ScrollView, ActivityIndicator, Alert, useWindowDimensions, TextStyle,
+  View, Text, Image, ScrollView, ActivityIndicator, Alert, useWindowDimensions, TextStyle,
 } from "react-native";
 
 import { Player, RosterRule, Lineup } from "../types";
@@ -14,6 +14,7 @@ import { mergeProjectionsIntoDK } from "../utils/merge";
 import Controls from "../components/Controls";
 import LineupCard from "../components/LineupCard";
 import PlayerPanel from "../components/PlayerPanel";
+import FootballLoader from "../components/FootballLoader";
 import { buildTopLineups } from "../optimizer";
 import { useTheme } from "../ThemeContext";
 import { radius, space, type as T, heroType, APP_WIDTH } from "../theme";
@@ -146,6 +147,10 @@ export default function HomeScreen() {
   const hero = heroType(width);
   const column = { width: "100%" as const, maxWidth: APP_WIDTH, alignSelf: "center" as const };
 
+  // Full-screen only on the first load. A manual refresh keeps the user's
+  // place and reports through the nav spinner instead.
+  const firstLoad = !!loading && players.length === 0;
+
   return (
     <>
       <ScrollView style={{ backgroundColor: C.canvas }}>
@@ -159,14 +164,13 @@ export default function HomeScreen() {
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: space.xs }}>
-              <View
-                style={{
-                  width: 24, height: 24, borderRadius: radius.full,
-                  backgroundColor: C.primary, alignItems: "center", justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff", lineHeight: 16 }}>G</Text>
-              </View>
+              {/* The app icon doubles as the in-product mark. */}
+              <Image
+                source={require("../../assets/logo.png")}
+                style={{ width: 30, height: 30, borderRadius: 7 }}
+                resizeMode="cover"
+                accessibilityLabel="Gameday Optimizer"
+              />
               <Text style={{ ...T.bodyStrong, fontSize: 15, color: C.ink } as TextStyle}>
                 GAMEDAY
               </Text>
@@ -303,6 +307,8 @@ export default function HomeScreen() {
         lockedIds={lockedIds}
         onToggleLock={toggleLock}
       />
+
+      {firstLoad && <FootballLoader />}
     </>
   );
 }
