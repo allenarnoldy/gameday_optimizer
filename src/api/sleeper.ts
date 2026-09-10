@@ -11,8 +11,12 @@ return res.json();
 
 
 export async function fetchSleeperWeekProjections(season: number, week: number): Promise<any[]> {
-const base = `https://api.sleeper.com/projections/nfl/${season}`;
-const params = new URLSearchParams({ season_type: "regular", week: String(week), order_by: "pts_ppr" });
+// The week is a PATH segment, not a query param. Passing it as `?week=N` is
+// silently ignored -- the request still returns 200, but with season-long
+// totals (week: null, gp: 18), which is why projections read like full-year
+// numbers. With the week in the path each record comes back as gp: 1.
+const base = `https://api.sleeper.com/projections/nfl/${season}/${week}`;
+const params = new URLSearchParams({ season_type: "regular", order_by: "pts_ppr" });
 ["QB", "RB", "WR", "TE", "DEF"].forEach((p) => params.append("position[]", p));
 const res = await fetch(`${base}?${params.toString()}`);
 if (!res.ok) throw new Error("Failed to load Sleeper projections (week)");
@@ -74,7 +78,12 @@ const gameTime = sched?.time;
 const window = labelWindowLocal(gameTime);
 
 
-out.push({ id: String(pid), name, team, pos, proj, projSource: "Sleeper", opp: sched?.opp, gameId: sched?.id, gameTime, window });
+// The weekly endpoint carries the opponent itself, which is the only source
+// of it when no schedule is passed in (and DK, which also supplies one, is
+// blocked by CORS on web).
+const opp = sched?.opp || (p.opponent ? String(p.opponent).toUpperCase() : undefined);
+
+out.push({ id: String(pid), name, team, pos, proj, projSource: "Sleeper", opp, gameId: sched?.id, gameTime, window });
 }
 return out;
 }
