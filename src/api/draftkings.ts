@@ -1,8 +1,27 @@
+import { Platform } from "react-native";
 import { Player, Position } from "../types";
 
-const LOBBY_URL = "https://www.draftkings.com/lobby/getcontests?sport=NFL";
+/**
+ * DraftKings sends no CORS headers, so a browser can't call it directly - on
+ * web these go through our own /api/dk function instead, which fetches
+ * server-side and hands back the same field names. Native has no such
+ * restriction and talks to DraftKings directly.
+ *
+ * The Expo dev server doesn't serve /api routes, so in development we point at
+ * a local copy of the same function: `npm run dk-proxy`. Without it the fetch
+ * simply fails and the app falls back to Sleeper alone, as it did before.
+ */
+const PROXY = __DEV__ ? "http://localhost:4600/api/dk" : "/api/dk";
+const viaProxy = Platform.OS === "web";
+
+const LOBBY_URL = viaProxy
+  ? `${PROXY}?resource=lobby`
+  : "https://www.draftkings.com/lobby/getcontests?sport=NFL";
+
 const PLAYERS_URL = (draftGroupId: number) =>
-  `https://www.draftkings.com/lineup/getavailableplayers?draftGroupId=${draftGroupId}`;
+  viaProxy
+    ? `${PROXY}?resource=players&draftGroupId=${draftGroupId}`
+    : `https://www.draftkings.com/lineup/getavailableplayers?draftGroupId=${draftGroupId}`;
 
 export async function fetchDKDraftGroup(): Promise<{ draftGroupId: number; contestName: string }> {
   const res = await fetch(LOBBY_URL);
