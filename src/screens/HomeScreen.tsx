@@ -49,7 +49,7 @@ export default function HomeScreen() {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
 
   const [lockedIds, setLockedIds] = useState<Set<string>>(new Set());
-  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [posFilter, setPosFilter] = useState<PosFilter>("All");
 
   const [rules] = useState<RosterRule[]>([
@@ -79,7 +79,12 @@ export default function HomeScreen() {
   const fetchAll = useCallback(async (nextScoring: Scoring = scoring) => {
     setLoading("Loading current week's slate...");
     setLockedIds(new Set());
+    setExcludedIds(new Set());
     setLineups(null);
+    // A reload is a fresh slate, so drop back to the pool view. Without this
+    // the results section stayed mounted with nothing in it.
+    setGenerated(false);
+    setPanelOpen(false);
     try {
       const [dkResult, proj, allPlayers, evs] = await Promise.all([
         fetchDKCurrentWeek().catch(() => null),
@@ -127,19 +132,35 @@ export default function HomeScreen() {
 
   useEffect(() => { fetchAll(); }, []);
 
-  /** Removed players leave the pool entirely; locked ones always stay. */
-  const filteredPlayers = useMemo(() => {
+  /**
+   * Everything the pool lists. Excluded players stay in here so they keep
+   * their place in the table; a locked player ignores the window filter.
+   */
+  const poolPlayers = useMemo(() => {
     return players.filter(p => {
-      if (removedIds.has(p.id)) return false;
       if (lockedIds.has(p.id)) return true;
       const w = p.window || labelWindowLocal(p.gameTime);
       if (w === "Noon") return windowNoon;
       if (w === "3PM")  return window3pm;
       return windowNoon || window3pm;
     });
-  }, [players, windowNoon, window3pm, lockedIds, removedIds]);
+  }, [players, windowNoon, window3pm, lockedIds]);
 
+  /** What the optimizer is allowed to pick from. */
+  const solvePlayers = useMemo(
+    () => poolPlayers.filter(p => !excludedIds.has(p.id)),
+    [poolPlayers, excludedIds]
+  );
+
+  // Locked and excluded are mutually exclusive: setting one clears the other,
+  // or a locked player could be forced into a lineup they're ruled out of.
   const toggleLock = (id: string) => {
+    setExcludedIds(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     setLockedIds(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -147,19 +168,21 @@ export default function HomeScreen() {
     });
   };
 
-  // Removing a player also releases any lock on them, or the lock would keep
-  // forcing them back into every lineup.
-  const removePlayer = (id: string) => {
-    setRemovedIds(prev => new Set(prev).add(id));
+  const toggleExclude = (id: string) => {
     setLockedIds(prev => {
       if (!prev.has(id)) return prev;
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
+    setExcludedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
-  const restoreAll = () => setRemovedIds(new Set());
+  const clearExcluded = () => setExcludedIds(new Set());
 
   const solve = (pool: Player[], c = cap, n = topN, mpt = maxPerTeam, locked = lockedIds) => {
     const result = buildTopLineups(pool, rules, c, Math.max(1, n || 1), mpt, locked);
@@ -167,14 +190,14 @@ export default function HomeScreen() {
     setRunId(x => x + 1);
   };
 
-  const canGenerate = filteredPlayers.length > 0 && !generating;
+  const canGenerate = solvePlayers.length > 0 && !generating;
 
   const handleGenerate = () => {
     if (!canGenerate) return;
     setGenerating(true);
     setPanelOpen(false);
     setTimeout(() => {
-      solve(filteredPlayers);
+      solve(solvePlayers);
       setGenerated(true);
       setGenerating(false);
     }, 0);
@@ -214,7 +237,7 @@ export default function HomeScreen() {
     }
     if (!generated) return;
     const pool = players.filter(p => {
-      if (removedIds.has(p.id)) return false;
+      if (excludedIds.has(p.id)) return false;
       if (lockedIds.has(p.id)) return true;
       const w = p.window || labelWindowLocal(p.gameTime);
       if (w === "Noon") return d.windowNoon;
@@ -231,8 +254,8 @@ export default function HomeScreen() {
   const firstLoad = !!loading && players.length === 0;
 
   const poolLabel = lockedIds.size > 0
-    ? `Player pool · ${filteredPlayers.length} · ${lockedIds.size} locked`
-    : `Player pool · ${filteredPlayers.length}`;
+    ? `Player pool · ${solvePlayers.length} · ${lockedIds.size} locked`
+    : `Player pool · ${solvePlayers.length}`;
 
   return (
     <>
@@ -310,14 +333,14 @@ export default function HomeScreen() {
         {!generated ? (
           <View style={{ paddingHorizontal: gutter, paddingTop: space.lg }}>
             <InlinePool
-              players={filteredPlayers}
+              players={poolPlayers}
               lockedIds={lockedIds}
+              excludedIds={excludedIds}
               posFilter={posFilter}
               setPosFilter={setPosFilter}
-              onToggleLock={toggleLock}
-              onRemove={removePlayer}
-              removedCount={removedIds.size}
-              onRestoreAll={restoreAll}
+              onLock={toggleLock}
+              onExclude={toggleExclude}
+              onClearExcluded={clearExcluded}
             />
           </View>
         ) : (
@@ -366,12 +389,12 @@ export default function HomeScreen() {
       <PlayerPanel
         visible={panelOpen}
         onClose={() => setPanelOpen(false)}
-        players={filteredPlayers}
+        players={poolPlayers}
         lockedIds={lockedIds}
-        onToggleLock={toggleLock}
-        onRemove={removePlayer}
-        removedCount={removedIds.size}
-        onRestoreAll={restoreAll}
+        excludedIds={excludedIds}
+        onLock={toggleLock}
+        onExclude={toggleExclude}
+        onClearExcluded={clearExcluded}
         posFilter={posFilter}
         setPosFilter={setPosFilter}
       />

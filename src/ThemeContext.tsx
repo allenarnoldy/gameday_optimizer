@@ -1,55 +1,42 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo } from "react";
 import { Platform } from "react-native";
-import {
-  ColorSet, PosColors, RankEntry,
-  lightColors, darkColors,
-  lightPOS, darkPOS,
-  lightRANK, darkRANK,
-} from "./theme";
+import { ColorSet, PosColors, RankEntry, darkColors, darkPOS, darkRANK } from "./theme";
 import { installFonts } from "./fonts";
 
+/**
+ * The app ships dark only. PlayStation defines both canvas modes and the light
+ * palette is still exported from theme.ts, but nothing renders it — there is no
+ * mode switch, and `isDark` is here so call sites don't all need rewriting.
+ */
 type ThemeCtx = {
-  isDark: boolean;
-  toggle: () => void;
+  isDark: true;
   C: ColorSet;
   POS: PosColors;
   RANK: RankEntry[];
 };
 
-const ThemeContext = createContext<ThemeCtx>({
+const VALUE: ThemeCtx = {
   isDark: true,
-  toggle: () => {},
   C: darkColors,
   POS: darkPOS,
   RANK: darkRANK,
-});
+};
+
+const ThemeContext = createContext<ThemeCtx>(VALUE);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // PlayStation ships both canvas modes; dark is the editorial/product one
-  // and the right default for a gaming tool.
-  const [isDark, setIsDark] = useState(true);
-
-  const toggle = useCallback(() => setIsDark(d => !d), []);
-
   useEffect(() => { installFonts(); }, []);
 
   // Keep the document canvas in sync so overscroll doesn't reveal a
   // mismatched ground behind the app.
   useEffect(() => {
     if (Platform.OS !== "web" || typeof document === "undefined") return;
-    const bg = isDark ? darkColors.canvas : lightColors.canvas;
-    document.documentElement.style.background = bg;
-    document.body.style.background = bg;
-    document.documentElement.style.colorScheme = isDark ? "dark" : "light";
-  }, [isDark]);
+    document.documentElement.style.background = darkColors.canvas;
+    document.body.style.background = darkColors.canvas;
+    document.documentElement.style.colorScheme = "dark";
+  }, []);
 
-  const value = useMemo<ThemeCtx>(() => ({
-    isDark,
-    toggle,
-    C: isDark ? darkColors : lightColors,
-    POS: isDark ? darkPOS : lightPOS,
-    RANK: isDark ? darkRANK : lightRANK,
-  }), [isDark, toggle]);
+  const value = useMemo<ThemeCtx>(() => VALUE, []);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

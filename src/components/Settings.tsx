@@ -22,76 +22,6 @@ export type Draft = {
 export type Anchor = { top: number; right: number };
 
 /* ------------------------------------------------------------------ */
-/* Theme switch                                                        */
-/* ------------------------------------------------------------------ */
-/**
- * 52x28 track. The knob carries the mode you're in; the track shows the one
- * you'd switch to, which is why exactly one glyph is visible on each side.
- */
-export function ThemeSwitch() {
-  const { C, isDark, toggle } = useTheme();
-
-  return (
-    <Pressable
-      onPress={toggle}
-      accessibilityRole="switch"
-      accessibilityState={{ checked: !isDark }}
-      accessibilityLabel="Switch canvas mode"
-      style={{ flexShrink: 0 }}
-    >
-      <View
-        style={{
-          width: 52,
-          height: 28,
-          borderRadius: radius.full,
-          backgroundColor: isDark ? "rgba(255,255,255,0.12)" : C.primary,
-          borderWidth: 1,
-          borderColor: isDark ? C.hairline : C.primary,
-          justifyContent: "center",
-        }}
-      >
-        <View
-          style={{
-            position: "absolute",
-            top: 0, left: 0, right: 0, bottom: 0,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 5,
-          }}
-        >
-          <Text style={{ fontSize: 13, lineHeight: 15, color: isDark ? "transparent" : "rgba(255,255,255,0.85)" }}>
-            ☾
-          </Text>
-          <Text style={{ fontSize: 13, lineHeight: 15, color: isDark ? "rgba(229,229,229,0.6)" : "transparent" }}>
-            ☀
-          </Text>
-        </View>
-
-        <View
-          style={{
-            position: "absolute",
-            top: 2,
-            left: 2,
-            width: 22,
-            height: 22,
-            borderRadius: radius.full,
-            backgroundColor: "#ffffff",
-            alignItems: "center",
-            justifyContent: "center",
-            transform: [{ translateX: isDark ? 0 : 24 }],
-          }}
-        >
-          <Text style={{ fontSize: 12, lineHeight: 14, color: isDark ? "#121314" : C.primary }}>
-            {isDark ? "☾" : "☀"}
-          </Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Summary pill                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -209,8 +139,6 @@ export function SummaryPill({
       >
         <Text style={{ fontSize: 20, lineHeight: 24, color: C.ink }}>⚙</Text>
       </Pressable>
-
-      <ThemeSwitch />
     </View>
   );
 }

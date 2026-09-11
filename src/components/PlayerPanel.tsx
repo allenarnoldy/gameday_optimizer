@@ -14,17 +14,17 @@ type Props = {
   onClose: () => void;
   players: Player[];
   lockedIds: Set<string>;
-  onToggleLock: (id: string) => void;
-  onRemove: (id: string) => void;
-  removedCount: number;
-  onRestoreAll: () => void;
+  excludedIds: Set<string>;
+  onLock: (id: string) => void;
+  onExclude: (id: string) => void;
+  onClearExcluded: () => void;
   posFilter: PosFilter;
   setPosFilter: (p: PosFilter) => void;
 };
 
 export default function PlayerPanel({
-  visible, onClose, players, lockedIds, onToggleLock,
-  onRemove, removedCount, onRestoreAll, posFilter, setPosFilter,
+  visible, onClose, players, lockedIds, excludedIds, onLock,
+  onExclude, onClearExcluded, posFilter, setPosFilter,
 }: Props) {
   const { C } = useTheme();
   const { width } = useWindowDimensions();
@@ -55,6 +55,7 @@ export default function PlayerPanel({
 
   const panelWidth = Math.min(420, width);
   const rows = filterPool(players, posFilter);
+  const excludedCount = players.reduce((n, p) => n + (excludedIds.has(p.id) ? 1 : 0), 0);
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose}>
@@ -91,8 +92,9 @@ export default function PlayerPanel({
             <View style={{ gap: 2 }}>
               <Text style={{ ...T.headingLg, color: C.ink } as TextStyle}>Player pool</Text>
               <Text style={{ ...T.captionMd, color: C.inkMuted } as TextStyle}>
-                {players.length} available
+                {players.length - excludedCount} in play
                 {lockedIds.size > 0 ? ` · ${lockedIds.size} locked` : ""}
+                {excludedCount > 0 ? ` · ${excludedCount} excluded` : ""}
               </Text>
             </View>
             <IconButton onPress={onClose} size={40}>
@@ -101,14 +103,14 @@ export default function PlayerPanel({
           </View>
 
           <Text style={{ ...T.captionSm, color: C.inkFaint } as TextStyle}>
-            Tap to lock a player in, ✕ to remove.
+            ✓ locks a player into every lineup, ✕ rules them out.
           </Text>
 
           <PoolFilters
             posFilter={posFilter}
             setPosFilter={setPosFilter}
-            removedCount={removedCount}
-            onRestoreAll={onRestoreAll}
+            excludedCount={excludedCount}
+            onClearExcluded={onClearExcluded}
           />
         </View>
 
@@ -120,9 +122,9 @@ export default function PlayerPanel({
           renderItem={({ item }) => (
             <PlayerRow
               player={item}
-              locked={lockedIds.has(item.id)}
-              onToggleLock={onToggleLock}
-              onRemove={onRemove}
+              state={lockedIds.has(item.id) ? "locked" : excludedIds.has(item.id) ? "excluded" : "default"}
+              onLock={onLock}
+              onExclude={onExclude}
             />
           )}
           ListEmptyComponent={<PoolEmpty />}
