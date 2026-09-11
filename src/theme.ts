@@ -259,11 +259,23 @@ export const type = {
 } as const;
 
 /** Hero scales 54 -> 44 -> 32 -> 28 down the breakpoint stack, per the spec. */
-export function heroType(width: number): TypeToken {
-  if (width >= 1280) return display(54, -0.1);
-  if (width >= 768) return display(44, 0.1);
-  if (width >= 480) return display(32, 0.1);
-  return display(28, 0.1);
+/**
+ * The wordmark. A deliberate departure from the spec's display tier, which is
+ * Light 300 with positive tracking on the principle that scale, not weight,
+ * carries a PlayStation headline — this one is set bold and large on request.
+ * Tracking goes negative because open spacing is what makes 300 read as airy,
+ * and the same spacing at 700 just looks loose.
+ */
+export function heroTitle(width: number): TypeToken {
+  const fontSize =
+    width >= 1280 ? 76 : width >= 768 ? 62 : width >= 480 ? 46 : 38;
+  return {
+    fontFamily: DISPLAY_FONT,
+    fontSize,
+    fontWeight: '700',
+    lineHeight: Math.round(fontSize * 1.1),
+    letterSpacing: -1.5,
+  };
 }
 
 export function sectionType(width: number): TypeToken {

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Gameday Optimizer",
+    "name": "Gameday",
     "slug": "gameday-optimizer",
     "platforms": ["ios", "android", "web"],
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
       }
     },
     "web": {
-      "name": "Gameday Optimizer",
+      "name": "Gameday",
       "shortName": "Gameday",
       "description": "NFL DFS Lineup Optimizer — find the best lineup within the salary cap",
       "favicon": "./assets/favicon.png",

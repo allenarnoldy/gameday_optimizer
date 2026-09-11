@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Image, Platform, TextStyle, useWindowDimensions } from "react-native";
 import { useTheme } from "../ThemeContext";
-import { radius, space, type as T, heroType, APP_WIDTH } from "../theme";
+import { radius, space, type as T, heroTitle, APP_WIDTH } from "../theme";
 import { heroLayer } from "../fonts";
 
 /**
@@ -25,7 +25,7 @@ export default function HeroBand({ label }: { label: string }) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const narrow = width < 560;
-  const hero = heroType(width);
+  const hero = heroTitle(width);
 
   return (
     <View style={{ paddingHorizontal: isDesktop ? space.xl : space.md, paddingTop: space.sm }}>
@@ -98,7 +98,7 @@ export default function HeroBand({ label }: { label: string }) {
           >
             {label}
           </Text>
-          <Text style={{ ...hero, color: "#ffffff" } as TextStyle}>Gameday Optimizer</Text>
+          <Text style={{ ...hero, color: "#ffffff" } as TextStyle}>Gameday</Text>
         </View>
       </View>
     </View>

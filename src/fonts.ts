@@ -30,7 +30,9 @@ export function installFonts() {
   // Roboto Light 300 stands in for PlayStation SST's display tier;
   // Inter covers body and chrome.
   font.href =
-    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@300;400;500&display=swap";
+    // Roboto 700 is here for the wordmark; without a real bold face the
+    // browser synthesises one and the letterforms smear.
+    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap";
   document.head.appendChild(font);
 
   const style = document.createElement("style");

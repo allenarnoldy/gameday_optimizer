@@ -278,7 +278,7 @@ export default function HomeScreen() {
               source={require("../../assets/logo.png")}
               style={{ width: 30, height: 30, borderRadius: 7 }}
               resizeMode="cover"
-              accessibilityLabel="Gameday Optimizer"
+              accessibilityLabel="Gameday"
             />
             <SummaryPill draft={applied} onOpen={openSettings} />
           </View>
