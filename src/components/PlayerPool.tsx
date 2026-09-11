@@ -297,7 +297,6 @@ export default function InlinePool({
               {players.length - excludedCount} in play
               {lockedIds.size > 0 ? ` · ${lockedIds.size} locked` : ""}
               {excludedCount > 0 ? ` · ${excludedCount} excluded` : ""}
-              {" · ✓ locks a player in, ✕ rules them out"}
             </Text>
           </View>
           <PoolFilters

@@ -102,10 +102,6 @@ export default function PlayerPanel({
             </IconButton>
           </View>
 
-          <Text style={{ ...T.captionSm, color: C.inkFaint } as TextStyle}>
-            ✓ locks a player into every lineup, ✕ rules them out.
-          </Text>
-
           <PoolFilters
             posFilter={posFilter}
             setPosFilter={setPosFilter}
