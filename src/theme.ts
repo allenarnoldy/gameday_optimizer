@@ -36,6 +36,13 @@ export type ColorSet = {
   goldMid: string;
   goldEnd: string;
 
+  // Control chrome — the tinted grounds the design canvas uses for chips,
+  // icon buttons and text fields, which sit between canvas and surface1.
+  iconBg: string;
+  iconBgHover: string;
+  chipBg: string;
+  fieldBg: string;
+
   // Legacy aliases so no call site breaks mid-migration
   bg: string;
   card: string;
@@ -81,6 +88,11 @@ export const darkColors: ColorSet = {
   goldMid: '#f5a623',
   goldEnd: '#ee8e00',
 
+  iconBg: 'rgba(255,255,255,0.16)',
+  iconBgHover: 'rgba(255,255,255,0.26)',
+  chipBg: 'rgba(255,255,255,0.07)',
+  fieldBg: 'rgba(255,255,255,0.06)',
+
   bg: '#000000',
   card: '#181818',
   border: 'rgba(229,229,229,0.2)',
@@ -116,6 +128,11 @@ export const lightColors: ColorSet = {
   goldStart: '#ffce21',
   goldMid: '#f5a623',
   goldEnd: '#ee8e00',
+
+  iconBg: 'rgba(0,0,0,0.06)',
+  iconBgHover: 'rgba(0,0,0,0.12)',
+  chipBg: 'rgba(0,0,0,0.04)',
+  fieldBg: '#ffffff',
 
   bg: '#ffffff',
   card: '#f5f7fa',

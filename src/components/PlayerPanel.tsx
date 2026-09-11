@@ -2,13 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Modal, View, Text, Pressable, FlatList, TextStyle, useWindowDimensions } from "react-native";
 import { Player } from "../types";
 import { useTheme } from "../ThemeContext";
-import { currency } from "../utils/time";
-import { radius, space, type as T } from "../theme";
-import { PosBadge, IconButton, Chip, Checkbox } from "./ui";
-import { tnum, drawerState, scrimState, pressable } from "../fonts";
-
-const POSITIONS = ["All", "QB", "RB", "WR", "TE", "DST"] as const;
-type PosFilter = typeof POSITIONS[number];
+import { space, type as T } from "../theme";
+import { IconButton } from "./ui";
+import { drawerState, scrimState } from "../fonts";
+import {
+  PlayerRow, PoolColumns, PoolFilters, PoolEmpty, filterPool, PosFilter,
+} from "./PlayerPool";
 
 type Props = {
   visible: boolean;
@@ -16,12 +15,19 @@ type Props = {
   players: Player[];
   lockedIds: Set<string>;
   onToggleLock: (id: string) => void;
+  onRemove: (id: string) => void;
+  removedCount: number;
+  onRestoreAll: () => void;
+  posFilter: PosFilter;
+  setPosFilter: (p: PosFilter) => void;
 };
 
-export default function PlayerPanel({ visible, onClose, players, lockedIds, onToggleLock }: Props) {
+export default function PlayerPanel({
+  visible, onClose, players, lockedIds, onToggleLock,
+  onRemove, removedCount, onRestoreAll, posFilter, setPosFilter,
+}: Props) {
   const { C } = useTheme();
   const { width } = useWindowDimensions();
-  const [posFilter, setPosFilter] = useState<PosFilter>("All");
 
   // Keep the modal mounted through the exit so the panel can slide out
   // instead of being cut. `open` drives the transform one frame after mount.
@@ -48,9 +54,7 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
   if (!mounted) return null;
 
   const panelWidth = Math.min(420, width);
-  const filtered = (posFilter === "All" ? players : players.filter(p => p.pos === posFilter))
-    .slice()
-    .sort((a, b) => b.proj - a.proj);
+  const rows = filterPool(players, posFilter);
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose}>
@@ -73,7 +77,6 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
           borderLeftColor: C.hairline,
         }}
       >
-        {/* Header */}
         <View
           style={{
             paddingHorizontal: space.lg,
@@ -98,88 +101,31 @@ export default function PlayerPanel({ visible, onClose, players, lockedIds, onTo
           </View>
 
           <Text style={{ ...T.captionSm, color: C.inkFaint } as TextStyle}>
-            Tap a player to lock them into every lineup.
+            Tap to lock a player in, ✕ to remove.
           </Text>
 
-          <View style={{ flexDirection: "row", gap: space.xxs, flexWrap: "wrap" }}>
-            {POSITIONS.map(pos => (
-              <Chip
-                key={pos}
-                label={pos}
-                active={posFilter === pos}
-                onPress={() => setPosFilter(pos)}
-              />
-            ))}
-          </View>
+          <PoolFilters
+            posFilter={posFilter}
+            setPosFilter={setPosFilter}
+            removedCount={removedCount}
+            onRestoreAll={onRestoreAll}
+          />
         </View>
 
-        {/* Column headers */}
-        <View
-          style={{
-            flexDirection: "row", alignItems: "center", gap: space.xs,
-            paddingHorizontal: space.lg, paddingVertical: space.xs,
-            borderBottomWidth: 1, borderBottomColor: C.hairlineSoft,
-          }}
-        >
-          <View style={{ width: 20 }} />
-          <View style={{ width: 40 }} />
-          <Text style={{ ...T.captionSm, flex: 1, color: C.inkFaint, letterSpacing: 0.8 } as TextStyle}>
-            PLAYER
-          </Text>
-          <Text style={{ ...T.captionSm, width: 62, textAlign: "right", color: C.inkFaint } as TextStyle}>
-            SALARY
-          </Text>
-          <Text style={{ ...T.captionSm, width: 46, textAlign: "right", color: C.inkFaint } as TextStyle}>
-            PROJ
-          </Text>
-        </View>
+        <PoolColumns />
 
         <FlatList
-          data={filtered}
+          data={rows}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => {
-            const locked = lockedIds.has(item.id);
-            return (
-              <Pressable
-                onPress={() => onToggleLock(item.id)}
-                {...pressable}
-                style={({ pressed }) => ({
-                  flexDirection: "row", alignItems: "center", gap: space.xs,
-                  paddingHorizontal: space.lg, paddingVertical: 11,
-                  backgroundColor: locked
-                    ? "rgba(0,112,209,0.14)"
-                    : pressed ? C.surface1 : "transparent",
-                  borderBottomWidth: 1,
-                  borderBottomColor: C.hairlineSoft,
-                })}
-              >
-                <Checkbox checked={locked} />
-                <PosBadge pos={item.pos} />
-                <View style={{ flex: 1, gap: 1 }}>
-                  <Text numberOfLines={1} style={{ ...T.bodySm, fontWeight: "500", color: C.ink } as TextStyle}>
-                    {item.name}
-                  </Text>
-                  <Text style={{ ...T.captionSm, color: C.inkFaint } as TextStyle}>
-                    {item.team}{item.opp ? ` vs ${item.opp}` : ""}
-                    {item.projSource ? ` · ${item.projSource}` : ""}
-                  </Text>
-                </View>
-                <Text {...tnum} style={{ ...T.captionMd, width: 62, textAlign: "right", color: C.inkMuted } as TextStyle}>
-                  {item.salary ? currency(item.salary) : "—"}
-                </Text>
-                <Text {...tnum} style={{ ...T.bodySm, fontWeight: "600", width: 46, textAlign: "right", color: C.ink } as TextStyle}>
-                  {item.proj.toFixed(1)}
-                </Text>
-              </Pressable>
-            );
-          }}
-          ListEmptyComponent={
-            <View style={{ padding: space.xxl, alignItems: "center" }}>
-              <Text style={{ ...T.bodySm, color: C.inkMuted } as TextStyle}>
-                No players at this position.
-              </Text>
-            </View>
-          }
+          renderItem={({ item }) => (
+            <PlayerRow
+              player={item}
+              locked={lockedIds.has(item.id)}
+              onToggleLock={onToggleLock}
+              onRemove={onRemove}
+            />
+          )}
+          ListEmptyComponent={<PoolEmpty />}
         />
       </View>
     </Modal>

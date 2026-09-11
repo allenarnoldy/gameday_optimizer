@@ -100,9 +100,40 @@ export function installFonts() {
       background-clip: content-box;
     }
 
+    /* ---- Hero band ----
+       The layered gradients, the skewed stripe field and the two mask
+       gradients can't go through RN Web's style prop, so they live here and
+       attach by data attribute. Native gets the flat blue fallback instead. */
+    [data-hero="bg"] {
+      background-image: linear-gradient(101deg, #0070d1 0%, #0a5cb0 30%, #0b3468 56%, #061d38 76%, #030c18 100%);
+    }
+    [data-hero="overlay"] {
+      background-image:
+        linear-gradient(103deg, rgba(0,142,255,0.55) 0%, rgba(0,142,255,0.16) 26%, transparent 46%),
+        radial-gradient(90% 130% at 4% 26%, rgba(83,177,255,0.4) 0%, transparent 60%);
+    }
+    [data-hero="stripes"] {
+      background-image: repeating-linear-gradient(90deg, rgba(0,158,255,0.26) 0 6px, transparent 6px 28px);
+      transform: skewX(-19deg);
+      -webkit-mask-image: linear-gradient(94deg, transparent 0%, #000 34%, transparent 88%);
+      mask-image: linear-gradient(94deg, transparent 0%, #000 34%, transparent 88%);
+    }
+    [data-hero="art"] {
+      -webkit-mask-image: radial-gradient(72% 62% at 62% 50%, #000 42%, rgba(0,0,0,0.55) 66%, transparent 84%);
+      mask-image: radial-gradient(72% 62% at 62% 50%, #000 42%, rgba(0,0,0,0.55) 66%, transparent 84%);
+    }
+
+    /* Settings popover: fades and lifts into place from under the pill. */
+    [data-pop] {
+      transition: opacity 180ms cubic-bezier(.23,1,.32,1), transform 180ms cubic-bezier(.23,1,.32,1);
+    }
+    [data-pop="closed"] { opacity: 0; transform: translateY(-6px) scale(0.985); }
+    [data-pop="open"]   { opacity: 1; transform: none; }
+
     /* Reduced motion means gentler, not zero: colour and opacity stay,
        movement goes. */
     @media (prefers-reduced-motion: reduce) {
+      [data-pop] { transition: opacity 140ms ease; transform: none !important; }
       [data-press="true"] { transition: background-color 140ms ease; transform: none !important; }
       [data-rise="true"]  { animation: none; opacity: 1; }
       [data-drawer]       { transition: opacity 160ms ease; transform: none !important; }
@@ -138,3 +169,9 @@ export const drawerState = (open: boolean) =>
   web ? ({ dataSet: { drawer: open ? "open" : "closed" } } as any) : {};
 export const scrimState = (open: boolean) =>
   web ? ({ dataSet: { scrim: open ? "open" : "closed" } } as any) : {};
+/** Attach one of the hero band's web-only gradient/mask layers. */
+export const heroLayer = (part: "bg" | "overlay" | "stripes" | "art") =>
+  web ? ({ dataSet: { hero: part } } as any) : {};
+/** Settings popover open/closed transition. */
+export const popState = (open: boolean) =>
+  web ? ({ dataSet: { pop: open ? "open" : "closed" } } as any) : {};
