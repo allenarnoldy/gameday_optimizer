@@ -14,8 +14,6 @@ function buildCandidateSlots(players: Player[], rules: RosterRule[]): Player[][]
         candidates = [...pool].sort((a, b) => b.proj - a.proj).slice(0, 15);
       } else {
         // Top studs by raw projection + top value plays by proj/salary.
-        // Sorting combined pool by proj/salary means DFS visits high-value
-        // players first, finds good lineups early, and pruning kicks in fast.
         const byProj  = [...pool].sort((a, b) => b.proj - a.proj).slice(0, 8);
         const byValue = [...pool]
           .filter(p => (p.salary ?? 0) > 0)
@@ -23,11 +21,9 @@ function buildCandidateSlots(players: Player[], rules: RosterRule[]): Player[][]
           .slice(0, 8);
         const merged: Record<string, Player> = {};
         for (const p of [...byProj, ...byValue]) merged[p.id] = p;
-        // Sort by projection so DFS explores high-proj (high-salary) players first.
-        // This also makes upperBound() accurate: it picks the first available player
-        // per slot, which will be the highest-projection option when sorted this way.
-        candidates = Object.values(merged)
-          .sort((a, b) => b.proj - a.proj);
+        // Sorted by projection so DFS explores high-proj players first, which
+        // both finds good lineups early and makes the suffix ceiling exact.
+        candidates = Object.values(merged).sort((a, b) => b.proj - a.proj);
       }
       byPos[pos] = candidates;
     }
@@ -38,9 +34,13 @@ function buildCandidateSlots(players: Player[], rules: RosterRule[]): Player[][]
     for (const pos of r.allow) {
       for (const pl of (byPos[pos] ?? [])) merged[pl.id] = pl;
     }
-    return Object.values(merged)
-      .sort((a, b) => b.proj - a.proj);
+    return Object.values(merged).sort((a, b) => b.proj - a.proj);
   });
+}
+
+/** Two rules are interchangeable when they accept exactly the same positions. */
+function sameAllow(a: RosterRule, b: RosterRule): boolean {
+  return a.allow.length === b.allow.length && a.allow.every(x => b.allow.includes(x));
 }
 
 export function buildTopLineups(
@@ -66,34 +66,70 @@ export function buildTopLineups(
     }
   }
 
-  const hasSalaries = players.some(p => (p.salary ?? 0) > 0);
-  // True minimum salary for any player — used to check if remaining slots are fundable
-  const floorPerSlot = hasSalaries
-    ? Math.min(...players.map(p => p.salary ?? 0).filter(s => s > 0))
-    : 0;
+  const candidatesPerSlot = buildCandidateSlots(players, rules);
+  const nSlots = rules.length;
 
-  // How many non-pre-assigned slots remain at each index (precomputed)
-  const unfilledFrom = rules.map((_, i) =>
-    rules.slice(i).filter((__, j) => !preAssigned.has(i + j)).length
+  /**
+   * RB1/RB2 and WR1/WR2/WR3 draw from identical lists, so every roster was
+   * being rebuilt once per permutation of those slots - 2! * 3! = 12 times.
+   * Requiring the candidate index to increase across a run of interchangeable
+   * slots keeps exactly one representative and loses no lineup.
+   */
+  const orderedWithPrev: boolean[] = rules.map((r, i) =>
+    i > 0 &&
+    !preAssigned.has(i) &&
+    !preAssigned.has(i - 1) &&
+    sameAllow(r, rules[i - 1])
   );
 
-  const candidatesPerSlot = buildCandidateSlots(players, rules);
+  /**
+   * Cheapest way to fill each remaining slot, as a suffix sum. The old check
+   * used one global minimum salary for every slot, which barely pruned: a DST
+   * floor is nothing like a QB floor.
+   */
+  const minSuffix = new Array<number>(nSlots + 1).fill(0);
+  for (let i = nSlots - 1; i >= 0; i--) {
+    let slotMin: number;
+    if (preAssigned.has(i)) {
+      slotMin = preAssigned.get(i)!.salary ?? 0;
+    } else {
+      slotMin = Infinity;
+      for (const p of candidatesPerSlot[i]) slotMin = Math.min(slotMin, p.salary ?? 0);
+      if (!isFinite(slotMin)) slotMin = 0;
+    }
+    minSuffix[i] = minSuffix[i + 1] + slotMin;
+  }
 
-  const best: Lineup[] = [];
-  const usedIds  = new Set<string>();
+  /**
+   * Best projection still reachable from each slot, ignoring which players are
+   * already used. Looser than upperBound() but O(1), so it rejects most nodes
+   * before the exact bound has to be walked.
+   */
+  const maxSuffix = new Array<number>(nSlots + 1).fill(0);
+  for (let i = nSlots - 1; i >= 0; i--) {
+    const bestAt = preAssigned.has(i)
+      ? preAssigned.get(i)!.proj
+      : (candidatesPerSlot[i][0]?.proj ?? 0);
+    maxSuffix[i] = maxSuffix[i + 1] + bestAt;
+  }
+
+  type Entry = { lineup: Lineup; sig: string };
+  const best: Entry[] = [];
+  const usedIds = new Set<string>();
   const teamCount = new Map<string, number>();
 
-  // Seed mutable state with locked players so they're unavailable for other slots
   for (const p of preAssigned.values()) {
     usedIds.add(p.id);
     teamCount.set(p.team, (teamCount.get(p.team) || 0) + 1);
   }
 
-  // Upper bound: sum of the highest-projection available player for each remaining slot.
-  // Ignores salary (loose but fast). Projection pruning is the primary mechanism.
+  // Filled in place rather than spread into a new object at every node.
+  const chosen: Player[] = new Array(nSlots);
+
+  /** Exact ceiling: the best still-available player for each remaining slot. */
   function upperBound(fromSlot: number): number {
     let sum = 0;
-    for (let i = fromSlot; i < rules.length; i++) {
+    for (let i = fromSlot; i < nSlots; i++) {
       if (preAssigned.has(i)) { sum += preAssigned.get(i)!.proj; continue; }
       for (const pl of candidatesPerSlot[i]) {
         if (!usedIds.has(pl.id)) { sum += pl.proj; break; }
@@ -102,39 +138,45 @@ export function buildTopLineups(
     return sum;
   }
 
-  function dfs(
-    slotIdx: number,
-    curSlots: Record<string, Player>,
-    curProj: number,
-    curSalary: number
-  ) {
-    if (slotIdx === rules.length) {
-      best.push({ slots: curSlots, totalProj: curProj, totalSalary: curSalary });
-      best.sort((a, b) => b.totalProj - a.totalProj);
-      if (best.length > topN) best.pop();
-      return;
+  function record(curProj: number, curSalary: number) {
+    // Slots like TE and FLEX overlap, so the same roster can arrive under
+    // different labels. Key on the player set so "2 lineups" is really two.
+    const ids = new Array<string>(nSlots);
+    for (let i = 0; i < nSlots; i++) ids[i] = chosen[i].id;
+    const sig = ids.slice().sort().join("|");
+    if (best.some(e => e.sig === sig)) return;
+
+    const slots: Record<string, Player> = {};
+    for (let i = 0; i < nSlots; i++) slots[rules[i].slot] = chosen[i];
+
+    best.push({ lineup: { slots, totalProj: curProj, totalSalary: curSalary }, sig });
+    best.sort((a, b) => b.lineup.totalProj - a.lineup.totalProj);
+    if (best.length > topN) best.pop();
+  }
+
+  function dfs(slotIdx: number, curProj: number, curSalary: number, startIdx: number) {
+    if (slotIdx === nSlots) { record(curProj, curSalary); return; }
+
+    // Can every remaining slot still be filled within the cap?
+    if (curSalary + minSuffix[slotIdx] > cap) return;
+
+    if (best.length >= topN) {
+      const worst = best[best.length - 1].lineup.totalProj;
+      // Cheap precomputed ceiling first; only pay for the exact one if it survives.
+      if (curProj + maxSuffix[slotIdx] <= worst) return;
+      if (curProj + upperBound(slotIdx) <= worst) return;
     }
 
-    // Can we afford to fill every remaining slot at minimum price?
-    if (curSalary + unfilledFrom[slotIdx] * floorPerSlot > cap) return;
-
-    // Is the theoretical ceiling good enough to beat our Nth best?
-    const bound = curProj + upperBound(slotIdx);
-    if (best.length >= topN && bound <= best[best.length - 1].totalProj) return;
-
-    // Locked slot — use the pre-assigned player directly
     if (preAssigned.has(slotIdx)) {
       const p = preAssigned.get(slotIdx)!;
-      dfs(
-        slotIdx + 1,
-        { ...curSlots, [rules[slotIdx].slot]: p },
-        curProj + p.proj,
-        curSalary + (p.salary || 0)
-      );
+      chosen[slotIdx] = p;
+      dfs(slotIdx + 1, curProj + p.proj, curSalary + (p.salary || 0), 0);
       return;
     }
 
-    for (const pl of candidatesPerSlot[slotIdx]) {
+    const cands = candidatesPerSlot[slotIdx];
+    for (let k = startIdx; k < cands.length; k++) {
+      const pl = cands[k];
       if (usedIds.has(pl.id)) continue;
       const nextSalary = curSalary + (pl.salary || 0);
       if (nextSalary > cap) continue;
@@ -142,14 +184,17 @@ export function buildTopLineups(
 
       usedIds.add(pl.id);
       teamCount.set(pl.team, (teamCount.get(pl.team) || 0) + 1);
+      chosen[slotIdx] = pl;
 
-      dfs(slotIdx + 1, { ...curSlots, [rules[slotIdx].slot]: pl }, curProj + pl.proj, nextSalary);
+      // Next slot resumes after this index only when it is interchangeable.
+      const nextStart = slotIdx + 1 < nSlots && orderedWithPrev[slotIdx + 1] ? k + 1 : 0;
+      dfs(slotIdx + 1, curProj + pl.proj, nextSalary, nextStart);
 
       usedIds.delete(pl.id);
       teamCount.set(pl.team, (teamCount.get(pl.team) || 1) - 1);
     }
   }
 
-  dfs(0, {}, 0, 0);
-  return best;
+  dfs(0, 0, 0, 0);
+  return best.map(e => e.lineup);
 }
