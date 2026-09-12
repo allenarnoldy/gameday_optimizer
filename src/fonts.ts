@@ -125,6 +125,20 @@ export function installFonts() {
       mask-image: radial-gradient(72% 62% at 62% 50%, #000 42%, rgba(0,0,0,0.55) 66%, transparent 84%);
     }
 
+    /* ---- Generate button: the ball in flight ----
+       Deliberately CSS rather than Animated. Solving blocks the main thread,
+       which would freeze a JS-driven animation exactly when it is meant to be
+       reassuring; a compositor-driven transform/opacity animation keeps
+       flying through the block. */
+    @keyframes ballThrow {
+      0%   { transform: translate(-52px, 7px) rotate(0deg) scale(0.8);  opacity: 0; }
+      14%  { opacity: 1; }
+      50%  { transform: translate(0px, -8px) rotate(340deg) scale(1); }
+      86%  { opacity: 1; }
+      100% { transform: translate(52px, 7px) rotate(680deg) scale(0.8); opacity: 0; }
+    }
+    [data-throw="true"] { animation: ballThrow 900ms linear infinite; }
+
     /* Settings popover: fades and lifts into place from under the pill. */
     [data-pop] {
       transition: opacity 180ms cubic-bezier(.23,1,.32,1), transform 180ms cubic-bezier(.23,1,.32,1);
@@ -136,6 +150,8 @@ export function installFonts() {
        movement goes. */
     @media (prefers-reduced-motion: reduce) {
       [data-pop] { transition: opacity 140ms ease; transform: none !important; }
+      /* The ball holds still and just pulses, so the button still reads as busy. */
+      [data-throw="true"] { animation: none; opacity: 1; transform: none; }
       [data-press="true"] { transition: background-color 140ms ease; transform: none !important; }
       [data-rise="true"]  { animation: none; opacity: 1; }
       [data-drawer]       { transition: opacity 160ms ease; transform: none !important; }
@@ -177,3 +193,5 @@ export const heroLayer = (part: "bg" | "overlay" | "stripes" | "art") =>
 /** Settings popover open/closed transition. */
 export const popState = (open: boolean) =>
   web ? ({ dataSet: { pop: open ? "open" : "closed" } } as any) : {};
+/** Puts the football into its throw arc. */
+export const throwState = web ? ({ dataSet: { throw: "true" } } as any) : {};

@@ -20,12 +20,26 @@ import { heroLayer } from "../fonts";
 
 const web = Platform.OS === "web";
 
-export default function HeroBand({ label }: { label: string }) {
+export default function HeroBand({
+  label,
+  labelShort,
+  pill,
+}: {
+  label: string;
+  /** Phone-width form; the long one wraps onto two lines under ~560px. */
+  labelShort?: string;
+  /** Settings summary, rendered inside the band's top-right. */
+  pill?: React.ReactNode;
+}) {
   const { C } = useTheme();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const narrow = width < 560;
   const hero = heroTitle(width);
+
+  // Art scales with the band rather than with its own intrinsic size.
+  const artH = isDesktop ? 236 : narrow ? 124 : 190;
+  const artW = Math.round(artH * (245 / 249));
 
   return (
     <View style={{ paddingHorizontal: isDesktop ? space.xl : space.md, paddingTop: space.sm }}>
@@ -65,13 +79,13 @@ export default function HeroBand({ label }: { label: string }) {
           resizeMode="contain"
           style={{
             position: "absolute",
-            // On a phone the band is barely wider than the art, so it is
-            // pushed further off the edge and scaled down rather than sitting
-            // on top of the title.
-            right: narrow ? "-8%" : 0,
+            // Sized in pixels, not percentages: a percentage height left the
+            // image at its intrinsic 245px width, which on a 358px band ate
+            // two thirds of the hero and pushed the eyebrow onto two lines.
+            right: narrow ? -14 : 0,
             top: "54%",
-            height: narrow ? "78%" : "112%",
-            aspectRatio: 245 / 249,
+            width: artW,
+            height: artH,
             transform: [{ translateY: "-50%" as any }],
             // Without the radial mask the art would sit as a hard-edged tile,
             // so native softens it with opacity instead.
@@ -79,25 +93,54 @@ export default function HeroBand({ label }: { label: string }) {
           }}
         />
 
+        {/* Settings live in the band rather than on a strip above it — the
+            mark and the controls used to float over black with a gap, which
+            read as two disconnected pieces of chrome. */}
+        {pill ? (
+          <View
+            style={{
+              position: "absolute",
+              top: space.sm,
+              right: space.sm,
+              zIndex: 5,
+              maxWidth: "92%",
+              alignItems: "flex-end",
+            }}
+          >
+            {pill}
+          </View>
+        ) : null}
+
         <View
           style={{
             position: "relative",
-            paddingVertical: isDesktop ? space.xl : space.lg,
+            paddingTop: pill ? (isDesktop ? 74 : 62) : (isDesktop ? space.xl : space.lg),
+            paddingBottom: isDesktop ? space.xl : space.lg,
             paddingHorizontal: space.lg,
             gap: space.xs,
-            maxWidth: narrow ? "72%" : "64%",
+            maxWidth: narrow ? "82%" : "64%",
           }}
         >
-          <Text
-            style={{
-              ...T.captionSm,
-              textTransform: "uppercase",
-              letterSpacing: 1.6,
-              color: "rgba(255,255,255,0.8)",
-            } as TextStyle}
-          >
-            {label}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space.xs }}>
+            <Image
+              source={require("../../assets/logo.png")}
+              style={{ width: 22, height: 22, borderRadius: 5 }}
+              resizeMode="cover"
+              accessibilityLabel="Gameday"
+            />
+            <Text
+              style={{
+                ...T.captionSm,
+                textTransform: "uppercase",
+                // Tighter on a phone so the slate line stays on one row.
+                letterSpacing: narrow ? 0.9 : 1.6,
+                color: "rgba(255,255,255,0.8)",
+              } as TextStyle}
+              numberOfLines={1}
+            >
+              {narrow ? (labelShort ?? label) : label}
+            </Text>
+          </View>
           <Text style={{ ...hero, color: "#ffffff" } as TextStyle}>Gameday</Text>
         </View>
       </View>

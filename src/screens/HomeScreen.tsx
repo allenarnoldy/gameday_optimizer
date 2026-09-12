@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View, Text, Image, ScrollView, ActivityIndicator, Alert, Pressable,
+  View, Text, ScrollView, ActivityIndicator, Alert, Pressable,
   useWindowDimensions, TextStyle,
 } from "react-native";
 
@@ -21,7 +21,7 @@ import { SummaryPill, SettingsPopover, Draft, Anchor, Scoring } from "../compone
 import { buildTopLineups } from "../optimizer";
 import { useTheme } from "../ThemeContext";
 import { radius, space, type as T, APP_WIDTH } from "../theme";
-import { Card, PillButton, PanelRightIcon } from "../components/ui";
+import { Card, PillButton, PanelRightIcon, ThrowingBall } from "../components/ui";
 import { pressable } from "../fonts";
 
 export default function HomeScreen() {
@@ -261,43 +261,26 @@ export default function HomeScreen() {
     <>
       <ScrollView style={{ backgroundColor: C.canvas }}>
 
-        {/* ---- Brand mark + settings summary ----
-             The canvas puts only the pill here. The mark is kept on the left
-             so the app still carries its icon; it predates that asset. */}
-        <View style={{ paddingHorizontal: gutter, paddingTop: 10 }}>
-          <View
-            style={{
-              ...column,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: space.sm,
-            }}
-          >
-            <Image
-              source={require("../../assets/logo.png")}
-              style={{ width: 30, height: 30, borderRadius: 7 }}
-              resizeMode="cover"
-              accessibilityLabel="Gameday"
-            />
-            <SummaryPill draft={applied} onOpen={openSettings} />
-          </View>
-        </View>
-
-        <HeroBand label={`NFL Daily Fantasy · ${season} Week ${week}`} />
+        <HeroBand
+          label={`NFL Daily Fantasy · ${season} Week ${week}`}
+          labelShort={`${season} · Week ${week}`}
+          pill={<SummaryPill draft={applied} onOpen={openSettings} />}
+        />
 
         {/* ---- Actions ---- */}
         <View style={{ paddingHorizontal: gutter, paddingTop: space.lg }}>
           <View style={{ ...column, flexDirection: "row", gap: space.sm, flexWrap: "wrap", alignItems: "center" }}>
             {/* Generate and refresh share a line at every width - a full-width
                 Generate would push the reload button onto a row of its own. */}
+            {/* While solving, the label gives way to the ball in flight. */}
             <PillButton
-              label={generating ? "Solving…" : "Generate optimal lineups"}
+              label={generating ? undefined : "Generate lineups"}
               onPress={handleGenerate}
               disabled={!canGenerate}
+              accessibilityLabel={generating ? "Solving lineups" : undefined}
               style={{ flexGrow: 1, flexShrink: 1, minWidth: isNarrow ? 0 : 280 }}
             >
-              {generating ? <ActivityIndicator size="small" color="#fff" /> : null}
+              {generating ? <ThrowingBall /> : null}
             </PillButton>
 
             <Pressable
