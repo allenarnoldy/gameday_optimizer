@@ -10,15 +10,27 @@ function normalize(name: string): string {
 }
 
 /**
- * Overlay Sleeper (or any other source) projections onto a DraftKings player list.
- * DK provides accurate salaries + game context; Sleeper provides better projections.
- * Falls back to DK's own ppg average if no Sleeper match is found.
+ * Overlay Sleeper (or any other source) projections onto a DraftKings player
+ * list. DK provides accurate salaries and game context; Sleeper provides the
+ * projections.
  *
- * Players left with nothing to project from are dropped here, at the end --
- * never upstream on DK's ppg alone, which is last season's average and so is 0
- * for every rookie on the slate. Sleeper is what rescues them.
+ * When Sleeper answers, it is also the authority on *who is playing*. A player
+ * it declines to project is one it does not expect to produce, and the honest
+ * thing to do is leave them out.
+ *
+ * The alternative -- falling back to DraftKings' `ppg` -- reads as a
+ * projection but is last season's average points per game, which for a backup
+ * who started a few games last year looks exactly like a starter's output at a
+ * backup's price. That handed the optimizer the best value on the board:
+ * Carson Wentz, second on the depth chart, 16.3 "points" at $4,000. Nine of
+ * the ten best points-per-dollar plays in the pool were backup quarterbacks.
+ *
+ * So ppg survives only as a fallback for when Sleeper gives us nothing at all
+ * (an outage, or the preseason), where a rough number beats an empty app.
  */
 export function mergeProjectionsIntoDK(dkPlayers: Player[], projPlayers: Player[]): Player[] {
+  // With no projections at all, DK's average is all we have.
+  const sleeperIsAuthoritative = projPlayers.length > 0;
   const byName = new Map<string, Player>();
   const byTeamDST = new Map<string, Player>();
 
@@ -40,8 +52,12 @@ export function mergeProjectionsIntoDK(dkPlayers: Player[], projPlayers: Player[
       if (match && match.proj <= WEEKLY_MAX) {
         return { ...dk, proj: match.proj, projSource: "Sleeper" as const };
       }
-      // Sleeper has season totals instead of weekly projections (preseason) — use DK avg
+      // Sleeper has season totals instead of weekly projections (preseason),
+      // or does not project this player at all — fall back to DK's average.
       return dk;
     })
-    .filter(p => p.proj > 0);
+    .filter(p => {
+      if (p.proj <= 0) return false;
+      return sleeperIsAuthoritative ? p.projSource === "Sleeper" : true;
+    });
 }

@@ -1,6 +1,12 @@
 import { Player, Position } from "../types";
 import { labelWindowLocal } from "../utils/time";
 
+/**
+ * Sleeper injury designations that mean the player will not take the field.
+ * Questionable and Doubtful are deliberately absent - they may still play.
+ */
+const RULED_OUT = /^(out|ir|pup|sus|nfi|dnr)/i;
+
 
 export async function fetchSleeperPlayers(): Promise<Record<string, any>> {
 const url = "https://api.sleeper.app/v1/players/nfl";
@@ -57,6 +63,12 @@ const out: Player[] = [];
 for (const p of projections) {
 const pid = p.player_id || p.player?.player_id || p.playerId || p.id;
 const meta = playersById?.[pid];
+// A projection can outlive the news that ruled the player out - Sleeper was
+// still carrying 17.1 points for a quarterback listed Out. Anyone who cannot
+// take the field scores zero, so they have no business in the pool.
+// Questionable and Doubtful stay: they might still play, and that is a call
+// for whoever is building the lineup.
+if (RULED_OUT.test(String(meta?.injury_status ?? ""))) continue;
 const team = (meta?.team || p.player?.team || p.team || "").toUpperCase();
 const posRaw = String(
   meta?.position || p.player?.position || p.player?.fantasy_positions?.[0] || p.position || ""
