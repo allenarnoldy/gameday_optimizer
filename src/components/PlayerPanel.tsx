@@ -6,7 +6,7 @@ import { space, type as T } from "../theme";
 import { IconButton } from "./ui";
 import { drawerState, scrimState } from "../fonts";
 import {
-  PlayerRow, PoolColumns, PoolFilters, PoolEmpty, filterPool, PosFilter, Sort,
+  PlayerRow, PoolColumns, PoolFilters, PoolEmpty, filterPool, PosFilter, Sort, SortKey,
 } from "./PlayerPool";
 
 type Props = {
@@ -57,6 +57,8 @@ export default function PlayerPanel({
 
   const panelWidth = Math.min(420, width);
   const rows = filterPool(players, posFilter, sort);
+  const onSort = (key: SortKey) =>
+    setSort(sort.key === key ? { key, dir: sort.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" });
   const excludedCount = players.reduce((n, p) => n + (excludedIds.has(p.id) ? 1 : 0), 0);
 
   return (
@@ -105,8 +107,6 @@ export default function PlayerPanel({
           </View>
 
           <PoolFilters
-            sort={sort}
-            setSort={setSort}
             posFilter={posFilter}
             setPosFilter={setPosFilter}
             excludedCount={excludedCount}
@@ -114,13 +114,16 @@ export default function PlayerPanel({
           />
         </View>
 
-        <PoolColumns sort={sort} />
+        {/* The panel is 420px wide however wide the window is, so the rows
+            below it use the compact columns and the header must match. */}
+        <PoolColumns sort={sort} onSort={onSort} narrow />
 
         <FlatList
           data={rows}
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <PlayerRow
+              narrow
               player={item}
               state={lockedIds.has(item.id) ? "locked" : excludedIds.has(item.id) ? "excluded" : "default"}
               onLock={onLock}

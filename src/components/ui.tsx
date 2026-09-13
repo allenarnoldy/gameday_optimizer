@@ -313,7 +313,7 @@ export function PanelRightIcon({ color, size = 15 }: { color: string; size?: num
 /* Position badge                                                      */
 /* ------------------------------------------------------------------ */
 
-export function PosBadge({ pos }: { pos: string }) {
+export function PosBadge({ pos, compact }: { pos: string; compact?: boolean }) {
   const { POS, C } = useTheme();
   const colors = POS[pos] ?? { bg: C.surface2, fg: C.inkMuted };
   return (
@@ -321,9 +321,11 @@ export function PosBadge({ pos }: { pos: string }) {
       style={{
         backgroundColor: colors.bg,
         borderRadius: radius.sm,
-        paddingHorizontal: 7,
+        // Narrower on a phone so the name keeps its room once salary takes a
+        // column of its own. DST is the longest label and still fits.
+        paddingHorizontal: compact ? 5 : 7,
         paddingVertical: 3,
-        minWidth: 40,
+        minWidth: compact ? 34 : 40,
         alignItems: "center",
       }}
     >

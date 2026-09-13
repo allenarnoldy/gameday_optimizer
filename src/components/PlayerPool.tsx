@@ -41,14 +41,44 @@ export function filterPool(
 
 export type RowState = "default" | "locked" | "excluded";
 
+/**
+ * Column widths, shared by the rows and the header so the two stay in step.
+ *
+ * The phone numbers are tighter across the board — the toggles especially —
+ * to buy back enough room for a salary column. Salary used to fold into the
+ * meta line there, which made it unsortable by a column header and hard to
+ * compare down the list.
+ */
+function metrics(narrow: boolean) {
+  const toggle = narrow ? 28 : 34;
+  const toggleGap = narrow ? 3 : 4;
+  return {
+    gap: narrow ? 4 : space.xs,
+    padH: narrow ? 10 : space.lg,
+    // Wide enough for the heading *and* its caret, not just for the value:
+    // these were sized for "$8,000" and "22.1", so the headings clipped to
+    // "SALA…" and "PR…" once they became sort controls. Measured need, with
+    // the caret and a little headroom: SALARY 65, PROJ 47, SAL 36.
+    salaryW: narrow ? 50 : 68,
+    projW: narrow ? 46 : 52,
+    // Tracking that reads well on a wide heading just eats room on a phone.
+    headingTracking: narrow ? 0.3 : 0.8,
+    toggle,
+    toggleGap,
+    /* Both toggles, the gap between them, and the margin before them. */
+    tailW: toggle * 2 + toggleGap + space.xxs,
+  };
+}
+
 /** One of the paired toggles at the end of a row. */
 function RowToggle({
-  glyph, active, activeBg, label, onPress,
+  glyph, active, activeBg, label, size, onPress,
 }: {
   glyph: string;
   active: boolean;
   activeBg: string;
   label: string;
+  size: number;
   onPress: () => void;
 }) {
   const { C } = useTheme();
@@ -59,9 +89,12 @@ function RowToggle({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={label}
+      // The visible circle shrinks on a phone, but the touch target does not:
+      // hitSlop keeps roughly 44px of reachable area around each one.
+      hitSlop={Math.round((44 - size) / 2)}
       style={{
-        width: 34,
-        height: 34,
+        width: size,
+        height: size,
         borderRadius: radius.full,
         alignItems: "center",
         justifyContent: "center",
@@ -70,7 +103,13 @@ function RowToggle({
         borderColor: C.hairline,
       }}
     >
-      <Text style={{ fontSize: 14, lineHeight: 17, color: active ? "#ffffff" : C.inkFaint }}>
+      <Text
+        style={{
+          fontSize: size >= 34 ? 14 : 12,
+          lineHeight: size >= 34 ? 17 : 15,
+          color: active ? "#ffffff" : C.inkFaint,
+        }}
+      >
         {glyph}
       </Text>
     </Pressable>
@@ -86,28 +125,33 @@ function RowToggle({
  * row; pressing the active one returns the row to default.
  */
 export function PlayerRow({
-  player, state, onLock, onExclude,
+  player, state, onLock, onExclude, narrow: narrowProp,
 }: {
   player: Player;
   state: RowState;
   onLock: (id: string) => void;
   onExclude: (id: string) => void;
+  /**
+   * Overrides the window-width check. The drawer is a 420px panel on a wide
+   * screen, so measuring the window there gave it the roomy desktop columns
+   * and squeezed every name down to "Jahmyr Gi…".
+   */
+  narrow?: boolean;
 }) {
   const { C } = useTheme();
   const { width } = useWindowDimensions();
-  // Below this the salary column leaves the name too little room, so salary
-  // folds into the meta line instead of truncating everyone to "Jalen …".
-  const narrow = width < 560;
+  const narrow = narrowProp ?? width < 560;
+  const m = metrics(narrow);
 
   const locked = state === "locked";
   const excluded = state === "excluded";
 
   // State leads the line: on a phone the meta truncates, and the one part
   // that must never be the bit that gets cut is whether this row counts.
+  // Salary is a column at every width now, so it is no longer repeated here.
   const meta = [
     locked ? "Locked" : excluded ? "Excluded" : "",
     `${player.team}${player.opp ? ` vs ${player.opp}` : ""}`,
-    narrow && player.salary ? currency(player.salary) : "",
     !narrow && !locked && !excluded ? (player.projSource ?? "") : "",
   ].filter(Boolean).join(" · ");
 
@@ -116,8 +160,8 @@ export function PlayerRow({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: space.xs,
-        paddingHorizontal: narrow ? space.sm : space.lg,
+        gap: m.gap,
+        paddingHorizontal: m.padH,
         paddingVertical: 11,
         backgroundColor: locked ? "rgba(0,112,209,0.14)" : "transparent",
         borderBottomWidth: 1,
@@ -132,10 +176,10 @@ export function PlayerRow({
       <View
         style={{
           flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center",
-          gap: space.xs, opacity: excluded ? 0.45 : 1,
+          gap: m.gap, opacity: excluded ? 0.45 : 1,
         }}
       >
-        <PosBadge pos={player.pos} />
+        <PosBadge pos={player.pos} compact={narrow} />
 
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
           <Text
@@ -152,19 +196,28 @@ export function PlayerRow({
           </Text>
         </View>
 
-        {narrow ? null : (
-          <Text {...tnum} style={{ ...T.captionMd, width: 62, textAlign: "right", color: C.inkMuted } as TextStyle}>
-            {player.salary ? currency(player.salary) : "—"}
-          </Text>
-        )}
-        <Text {...tnum} style={{ ...T.bodySm, fontWeight: "600", width: 46, textAlign: "right", color: C.ink } as TextStyle}>
+        <Text
+          {...tnum}
+          style={{
+            ...T.captionMd, width: m.salaryW, textAlign: "right", color: C.inkMuted,
+          } as TextStyle}
+        >
+          {player.salary ? currency(player.salary) : "—"}
+        </Text>
+        <Text
+          {...tnum}
+          style={{
+            ...T.bodySm, fontWeight: "600", width: m.projW, textAlign: "right", color: C.ink,
+          } as TextStyle}
+        >
           {player.proj.toFixed(1)}
         </Text>
       </View>
 
-      <View style={{ flexDirection: "row", gap: space.xxs, marginLeft: space.xxs }}>
+      <View style={{ flexDirection: "row", gap: m.toggleGap, marginLeft: space.xxs }}>
         <RowToggle
           glyph="✓"
+          size={m.toggle}
           active={locked}
           activeBg={C.primary}
           label={locked ? `Unlock ${player.name}` : `Lock ${player.name} into every lineup`}
@@ -172,6 +225,7 @@ export function PlayerRow({
         />
         <RowToggle
           glyph="✕"
+          size={m.toggle}
           active={excluded}
           activeBg={C.warning}
           label={excluded ? `Include ${player.name} again` : `Exclude ${player.name} from lineups`}
@@ -186,73 +240,15 @@ export function PlayerRow({
 /* Shared chrome                                                       */
 /* ------------------------------------------------------------------ */
 
-/**
- * One sort option. Pressing the one already in use flips its direction, so
- * both the key and the order are reachable without a second control.
- *
- * The caret shows on the active option only — on the inactive one it would be
- * claiming an order that isn't in effect.
- */
-function SortChip({
-  label, active, dir, onPress,
-}: { label: string; active: boolean; dir: SortDir; onPress: () => void }) {
-  const { C, isDark } = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      {...toggleable}
-      accessibilityRole="button"
-      accessibilityLabel={
-        active
-          ? `Sorted by ${label}, ${dir === "desc" ? "highest first" : "lowest first"}. Press to reverse.`
-          : `Sort by ${label}`
-      }
-      style={{
-        minHeight: 40,
-        paddingVertical: 7,
-        paddingHorizontal: 12,
-        borderRadius: radius.full,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)",
-        borderWidth: 2,
-        borderColor: active ? C.primary : "transparent",
-      }}
-    >
-      <Text style={{ ...T.buttonMd, color: active ? C.link : C.inkMuted } as TextStyle}>
-        {label}
-      </Text>
-      {active ? (
-        <Text style={{ ...T.captionSm, color: C.link, lineHeight: 14 } as TextStyle}>
-          {dir === "desc" ? "↓" : "↑"}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
-}
-
 export function PoolFilters({
-  posFilter, setPosFilter, excludedCount, onClearExcluded, sort, setSort,
+  posFilter, setPosFilter, excludedCount, onClearExcluded,
 }: {
   posFilter: PosFilter;
   setPosFilter: (p: PosFilter) => void;
   excludedCount: number;
   onClearExcluded: () => void;
-  sort: Sort;
-  setSort: (s: Sort) => void;
 }) {
   const { C } = useTheme();
-
-  const pick = (key: SortKey) =>
-    setSort(
-      sort.key === key
-        ? { key, dir: sort.dir === "desc" ? "asc" : "desc" }
-        // A new column starts high-to-low: that is what you want first of
-        // either money or points.
-        : { key, dir: "desc" },
-    );
-
   return (
     // minWidth 0 lets the row actually wrap: without it the chips size the
     // flex parent and run off the edge instead of breaking to a second line.
@@ -260,35 +256,6 @@ export function PoolFilters({
       {POSITIONS.map(pos => (
         <Chip key={pos} label={pos} active={posFilter === pos} onPress={() => setPosFilter(pos)} />
       ))}
-
-      {/* Sort sits with the filters rather than on the column headers: SALARY
-          is not rendered as a column on a phone, so headers would have left
-          half the sort unreachable exactly where the list is longest. */}
-      <View style={{ width: space.xs }} />
-      <View style={{ flexDirection: "row", alignItems: "center", gap: space.xxs }}>
-        <Text
-          style={{
-            ...T.captionSm,
-            color: C.inkFaint,
-            letterSpacing: 0.8,
-            marginRight: 2,
-          } as TextStyle}
-        >
-          SORT
-        </Text>
-        <SortChip
-          label="Proj"
-          active={sort.key === "proj"}
-          dir={sort.dir}
-          onPress={() => pick("proj")}
-        />
-        <SortChip
-          label="Salary"
-          active={sort.key === "salary"}
-          dir={sort.dir}
-          onPress={() => pick("salary")}
-        />
-      </View>
 
       {excludedCount > 0 ? (
         <Pressable
@@ -311,24 +278,88 @@ export function PoolFilters({
 }
 
 /**
- * Column headers. The leading spacers mirror the row's checkbox and position
- * badge so PLAYER actually sits above the name rather than over the badge.
+ * A sortable column heading. Pressing the column already in use reverses it,
+ * so both the key and the direction are reachable from the header alone.
+ *
+ * The caret's space is reserved in both states — rendered transparent when
+ * inactive — so switching columns doesn't shuffle the headings sideways.
  */
-export function PoolColumns({ topRule, sort }: { topRule?: boolean; sort?: Sort }) {
+function SortHeader({
+  label, width, tracking, active, dir, onPress,
+}: {
+  label: string;
+  width: number;
+  tracking: number;
+  active: boolean;
+  dir: SortDir;
+  onPress: () => void;
+}) {
+  const { C } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      {...toggleable}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={
+        active
+          ? `Sorted by ${label}, ${dir === "desc" ? "highest first" : "lowest first"}. Press to reverse.`
+          : `Sort by ${label}`
+      }
+      style={{
+        width,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        gap: 1,
+        paddingVertical: 6,
+      }}
+    >
+      <Text
+        numberOfLines={1}
+        style={{
+          ...T.captionSm,
+          color: active ? C.link : C.inkFaint,
+          letterSpacing: tracking,
+        } as TextStyle}
+      >
+        {label}
+      </Text>
+      <Text
+        style={{
+          ...T.captionSm,
+          lineHeight: 14,
+          color: active ? C.link : "transparent",
+        } as TextStyle}
+      >
+        {dir === "desc" ? "↓" : "↑"}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Column headers, and the sort control. The leading spacer mirrors the row's
+ * position badge so PLAYER sits above the name rather than over the badge.
+ */
+export function PoolColumns({
+  topRule, sort, onSort, narrow: narrowProp,
+}: {
+  topRule?: boolean;
+  sort: Sort;
+  onSort: (key: SortKey) => void;
+  /** See PlayerRow — must match whatever the rows below are using. */
+  narrow?: boolean;
+}) {
   const { C } = useTheme();
   const { width } = useWindowDimensions();
-  const narrow = width < 560;
-  // The header marks which column the list is ordered by. It isn't the
-  // control — that's the chips above, which stay reachable when SALARY is
-  // dropped on a phone — it just says what you're looking at.
-  const caret = (key: SortKey) =>
-    sort?.key === key ? (sort.dir === "desc" ? " ↓" : " ↑") : "";
-  const tint = (key: SortKey) => (sort?.key === key ? C.link : C.inkFaint);
+  const narrow = narrowProp ?? width < 560;
+  const m = metrics(narrow);
   return (
     <View
       style={{
-        flexDirection: "row", alignItems: "center", gap: space.xs,
-        paddingHorizontal: narrow ? space.sm : space.lg, paddingVertical: space.xs,
+        flexDirection: "row", alignItems: "center", gap: m.gap,
+        paddingHorizontal: m.padH, paddingVertical: 2,
         borderTopWidth: topRule ? 1 : 0,
         borderTopColor: C.hairline,
         borderBottomWidth: 1,
@@ -338,18 +369,31 @@ export function PoolColumns({ topRule, sort }: { topRule?: boolean; sort?: Sort 
         borderLeftColor: "transparent",
       }}
     >
-      <View style={{ width: 40 }} />
-      <Text style={{ ...T.captionSm, flex: 1, color: C.inkFaint, letterSpacing: 0.8 } as TextStyle}>PLAYER</Text>
-      {narrow ? null : (
-        <Text style={{ ...T.captionSm, width: 62, textAlign: "right", color: tint("salary") } as TextStyle}>
-          SALARY{caret("salary")}
-        </Text>
-      )}
-      <Text style={{ ...T.captionSm, width: 46, textAlign: "right", color: tint("proj") } as TextStyle}>
-        PROJ{caret("proj")}
+      <View style={{ width: narrow ? 34 : 40 }} />
+      <Text
+        style={{
+          ...T.captionSm, flex: 1, color: C.inkFaint, letterSpacing: m.headingTracking,
+        } as TextStyle}
+      >
+        PLAYER
       </Text>
-      {/* Two 34px toggles plus their gap and leading margin. */}
-      <View style={{ width: 76 }} />
+      <SortHeader
+        label={narrow ? "SAL" : "SALARY"}
+        width={m.salaryW}
+        tracking={m.headingTracking}
+        active={sort.key === "salary"}
+        dir={sort.dir}
+        onPress={() => onSort("salary")}
+      />
+      <SortHeader
+        label="PROJ"
+        width={m.projW}
+        tracking={m.headingTracking}
+        active={sort.key === "proj"}
+        dir={sort.dir}
+        onPress={() => onSort("proj")}
+      />
+      <View style={{ width: m.tailW }} />
     </View>
   );
 }
@@ -390,6 +434,10 @@ export default function InlinePool({
   const { C } = useTheme();
   const rows = filterPool(players, posFilter, sort);
   const excludedCount = players.reduce((n, p) => n + (excludedIds.has(p.id) ? 1 : 0), 0);
+  // A new column starts high-to-low — that is what you want first of either
+  // money or points; pressing the one in use reverses it.
+  const onSort = (key: SortKey) =>
+    setSort(sort.key === key ? { key, dir: sort.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" });
 
   return (
     <View
@@ -423,13 +471,11 @@ export default function InlinePool({
             setPosFilter={setPosFilter}
             excludedCount={excludedCount}
             onClearExcluded={onClearExcluded}
-            sort={sort}
-            setSort={setSort}
           />
         </View>
       </View>
 
-      <PoolColumns topRule sort={sort} />
+      <PoolColumns topRule sort={sort} onSort={onSort} />
 
       {rows.length === 0 ? (
         <PoolEmpty />
