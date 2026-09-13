@@ -16,7 +16,7 @@ import LineupCard from "../components/LineupCard";
 import PlayerPanel from "../components/PlayerPanel";
 import FootballLoader from "../components/FootballLoader";
 import HeroBand from "../components/HeroBand";
-import InlinePool, { PosFilter } from "../components/PlayerPool";
+import InlinePool, { PosFilter, Sort, DEFAULT_SORT } from "../components/PlayerPool";
 import { SummaryPill, SettingsPopover, Draft, Anchor, Scoring } from "../components/Settings";
 import { buildTopLineups } from "../optimizer";
 import { useTheme } from "../ThemeContext";
@@ -69,6 +69,7 @@ export default function HomeScreen() {
   const [lockedIds, setLockedIds] = useState<Set<string>>(new Set());
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [posFilter, setPosFilter] = useState<PosFilter>("All");
+  const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
 
   const [rules] = useState<RosterRule[]>([
     { slot: "QB",   allow: ["QB"] },
@@ -375,6 +376,8 @@ export default function HomeScreen() {
               excludedIds={excludedIds}
               posFilter={posFilter}
               setPosFilter={setPosFilter}
+              sort={sort}
+              setSort={setSort}
               onLock={toggleLock}
               onExclude={toggleExclude}
               onClearExcluded={clearExcluded}
@@ -433,6 +436,8 @@ export default function HomeScreen() {
         onExclude={toggleExclude}
         onClearExcluded={clearExcluded}
         posFilter={posFilter}
+        sort={sort}
+        setSort={setSort}
         setPosFilter={setPosFilter}
       />
 

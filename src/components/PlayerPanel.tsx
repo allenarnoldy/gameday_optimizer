@@ -6,7 +6,7 @@ import { space, type as T } from "../theme";
 import { IconButton } from "./ui";
 import { drawerState, scrimState } from "../fonts";
 import {
-  PlayerRow, PoolColumns, PoolFilters, PoolEmpty, filterPool, PosFilter,
+  PlayerRow, PoolColumns, PoolFilters, PoolEmpty, filterPool, PosFilter, Sort,
 } from "./PlayerPool";
 
 type Props = {
@@ -20,11 +20,13 @@ type Props = {
   onClearExcluded: () => void;
   posFilter: PosFilter;
   setPosFilter: (p: PosFilter) => void;
+  sort: Sort;
+  setSort: (s: Sort) => void;
 };
 
 export default function PlayerPanel({
   visible, onClose, players, lockedIds, excludedIds, onLock,
-  onExclude, onClearExcluded, posFilter, setPosFilter,
+  onExclude, onClearExcluded, posFilter, setPosFilter, sort, setSort,
 }: Props) {
   const { C } = useTheme();
   const { width } = useWindowDimensions();
@@ -54,7 +56,7 @@ export default function PlayerPanel({
   if (!mounted) return null;
 
   const panelWidth = Math.min(420, width);
-  const rows = filterPool(players, posFilter);
+  const rows = filterPool(players, posFilter, sort);
   const excludedCount = players.reduce((n, p) => n + (excludedIds.has(p.id) ? 1 : 0), 0);
 
   return (
@@ -103,6 +105,8 @@ export default function PlayerPanel({
           </View>
 
           <PoolFilters
+            sort={sort}
+            setSort={setSort}
             posFilter={posFilter}
             setPosFilter={setPosFilter}
             excludedCount={excludedCount}
@@ -110,7 +114,7 @@ export default function PlayerPanel({
           />
         </View>
 
-        <PoolColumns />
+        <PoolColumns sort={sort} />
 
         <FlatList
           data={rows}

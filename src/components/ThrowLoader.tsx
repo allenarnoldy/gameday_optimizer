@@ -38,6 +38,15 @@ const BALL =
 const HASH_PITCH = 48;
 const HASH_LEN = 14;
 
+/** How far above the bar the throw is allowed to reach. */
+const RISE = 40;
+/**
+ * The box the ball travels in. Wide enough for the streak reaching back behind
+ * it, tall enough for the ball at its 1.2 tumble scale plus the glow.
+ */
+const BALL_BOX_W = 176;
+const BALL_BOX_H = 44;
+
 export const THROW_BAR_HEIGHT = H;
 export const THROW_BAR_WIDTH = W0;
 /** One complete throw, in ms. Callers hold the bar up at least this long. */
@@ -78,6 +87,20 @@ function flyOpacity(t: number) {
   return 1;
 }
 
+/** The ball's transform at t, in the wrapper's coordinates. */
+function flyTransform(w: number, t: number) {
+  const { x, y, a } = arcAt(w, t);
+  // Note the spaces: a transform list is whitespace-separated, and writing
+  // translate(...)rotate(...) run together is accepted by Chrome but is not
+  // something to rely on -- an engine that rejects it drops the whole
+  // declaration, and the ball never moves.
+  return `translate(${x.toFixed(2)}px, ${(y + RISE).toFixed(2)}px) rotate(${a.toFixed(2)}deg)`;
+}
+
+function flyStep(w: number, t: number) {
+  return `transform: ${flyTransform(w, t)}; opacity: ${flyOpacity(t).toFixed(3)};`;
+}
+
 const injectedFly = new Set<string>();
 
 /**
@@ -102,11 +125,7 @@ function ensureFlyKeyframes(w: number): string {
   const frames: string[] = [];
   for (let i = 0; i <= STEPS; i++) {
     const t = i / STEPS;
-    const { x, y, a } = arcAt(w, t);
-    frames.push(
-      `${(t * 100).toFixed(3)}%{transform:translate(${x.toFixed(2)}px,${y.toFixed(2)}px)` +
-      `rotate(${a.toFixed(2)}deg);opacity:${flyOpacity(t).toFixed(3)}}`
-    );
+    frames.push(`${(t * 100).toFixed(3)}% { ${flyStep(w, t)} }`);
   }
   const el = document.createElement("style");
   el.textContent = `@keyframes ${name}{${frames.join("")}}`;
@@ -122,12 +141,10 @@ function hashPath(w: number) {
   return d.trim();
 }
 
-/** The leather itself. Static — the tumble is applied by the group above it. */
+/** The leather itself. Static — the tumble is applied by the layer above it. */
 function Ball() {
   return (
-    // The scale is repeated as a resting value so the ball keeps its size when
-    // reduced motion switches the tumble off.
-    <g style={{ transform: "scale(1.2)", animation: "omTumble .5s ease-in-out infinite" }}>
+    <g>
       <path d={BALL} fill="url(#omLeather)" />
       <g clipPath="url(#omBallClip)">
         {/* Shaded underside */}
@@ -213,8 +230,7 @@ export default function ThrowLoader({
 
   const dur = `${throwSeconds}s`;
   const flyName = ensureFlyKeyframes(w);
-  const mid = arcAt(w, 0.5);
-  const rest = `translate(${mid.x.toFixed(2)}px,${mid.y.toFixed(2)}px) rotate(${mid.a.toFixed(2)}deg)`;
+  const rest = flyTransform(w, 0.5);
 
   return (
     <View
@@ -265,73 +281,17 @@ export default function ThrowLoader({
         }}
       >
         <defs>
-          <linearGradient id="omLeather" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#cd7434" />
-            <stop offset="60%" stopColor="#b25a23" />
-            <stop offset="100%" stopColor="#9a4a1b" />
-          </linearGradient>
-          {/* The pill, plus a window above it so the throw can leave the bar. */}
+          {/* The pill. The throw is no longer drawn in here, so it needs no
+              window above it any more. */}
           <clipPath id="omBar">
             <rect x="0" y="0" width={w} height={H} rx={H / 2} />
-            <rect x={w * (30 / W0)} y="-40" width={w * (360 / W0)} height="40" />
           </clipPath>
-          <clipPath id="omBallClip">
-            <path d={BALL} />
-          </clipPath>
-          <radialGradient id="omGlowG">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity={0.55} />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
-          </radialGradient>
-          {/* The streak fades out behind the ball. */}
-          <linearGradient id="omTrailG" gradientUnits="userSpaceOnUse" x1="-80" y1="0" x2="-26" y2="0">
-            <stop offset="0%" stopColor="#dfeeff" stopOpacity={0} />
-            <stop offset="100%" stopColor="#dfeeff" stopOpacity={0.55} />
-          </linearGradient>
         </defs>
 
         <g clipPath="url(#omBar)">
           {/* Yard marks running past under the throw */}
           <g data-throw="hash" opacity={0.18} style={{ animation: "omHash 1.1s linear infinite" }}>
             <path d={hashPath(w)} stroke="#dfeeff" strokeWidth={2} strokeLinecap="round" />
-          </g>
-
-          <g
-            data-throw="ball"
-            style={{
-              // Resting value: mid-arc, so reduced motion parks the ball at
-              // the top of the throw rather than at the keyframe's origin.
-              transform: rest,
-              animation: `${flyName} ${dur} linear infinite`,
-            }}
-          >
-            <ellipse
-              data-throw="glow"
-              cx={0}
-              cy={1}
-              rx={26}
-              ry={14}
-              fill="url(#omGlowG)"
-              style={{ animation: "omGlow .9s ease-in-out infinite" }}
-            />
-            {showTrail ? (
-              /*
-                The streak rides with the ball instead of being a dash crawling
-                along a static path. stroke-dashoffset is a main-thread
-                property and would freeze during the solve; carried inside this
-                group it inherits the composited transform. The group is
-                rotated to the path tangent, so a flat streak behind the ball
-                stays tangent to the arc.
-              */
-              <path
-                data-throw="trail"
-                d="M -80 0 L -26 0"
-                fill="none"
-                stroke={`url(#omTrailG)`}
-                strokeWidth={2.5}
-                strokeLinecap="round"
-              />
-            ) : null}
-            <Ball />
           </g>
         </g>
 
@@ -347,6 +307,139 @@ export default function ThrowLoader({
           strokeWidth={1.5}
         />
       </svg>
+
+      {/*
+        The football is carried by an HTML element, not by a transform on an
+        SVG group.
+
+        A transform on an SVG element is the one part of this that browsers
+        genuinely disagree about -- transform-box and transform-origin default
+        differently, and support has changed across versions -- and if an
+        engine drops the declaration the ball simply never moves. On a plain
+        absolutely-positioned div, translate/rotate mean the same thing
+        everywhere and composite everywhere.
+
+        The wrapper is the bar plus a window above it, with overflow hidden:
+        the streak reaches back far enough to leave the pill at the start of
+        the throw, and something has to cut it off. Plain overflow rather than
+        clip-path, again because it behaves the same everywhere.
+      */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: -RISE,
+          width: "100%",
+          height: H + RISE,
+          overflow: "hidden",
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          data-throw="ball"
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: BALL_BOX_W,
+            height: BALL_BOX_H,
+            marginLeft: -BALL_BOX_W / 2,
+            marginTop: -BALL_BOX_H / 2,
+            // Resting value: mid-arc, so reduced motion parks the ball at the
+            // top of the throw rather than at the keyframe's origin.
+            transform: rest,
+            animation: `${flyName} ${dur} linear infinite`,
+          }}
+        >
+          <svg
+            viewBox={`${-BALL_BOX_W / 2} ${-BALL_BOX_H / 2} ${BALL_BOX_W} ${BALL_BOX_H}`}
+            width={BALL_BOX_W}
+            height={BALL_BOX_H}
+            style={{ display: "block", overflow: "visible" }}
+          >
+            {/* Kept local rather than referenced out of the field SVG above:
+                cross-element url(#…) references are another thing engines have
+                disagreed about, and there is no reason to depend on it. */}
+            <defs>
+              <radialGradient id="omGlowG">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity={0.55} />
+                <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
+              </radialGradient>
+              {/* The streak fades out behind the ball. */}
+              <linearGradient
+                id="omTrailG"
+                gradientUnits="userSpaceOnUse"
+                x1="-80" y1="0" x2="-26" y2="0"
+              >
+                <stop offset="0%" stopColor="#dfeeff" stopOpacity={0} />
+                <stop offset="100%" stopColor="#dfeeff" stopOpacity={0.55} />
+              </linearGradient>
+            </defs>
+            <ellipse
+              data-throw="glow"
+              cx={0}
+              cy={1}
+              rx={26}
+              ry={14}
+              fill="url(#omGlowG)"
+              style={{ animation: "omGlow .9s ease-in-out infinite" }}
+            />
+            {showTrail ? (
+              /*
+                The streak rides with the ball rather than being a dash
+                crawling along a static path: stroke-dashoffset is a
+                main-thread property and would freeze during the solve. The
+                ball is rotated to the path tangent, so a flat streak behind it
+                stays tangent to the arc.
+              */
+              <path
+                data-throw="trail"
+                d="M -80 0 L -26 0"
+                fill="none"
+                stroke="url(#omTrailG)"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+              />
+            ) : null}
+          </svg>
+
+          {/* The tumble gets its own HTML layer for the same reason the throw
+              does, and because two animations cannot share one transform.
+              The streak above stays out of it — it marks the line of flight,
+              so it should not wobble with the ball. */}
+          <div
+            data-throw="tumble"
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: BALL_BOX_W,
+              height: BALL_BOX_H,
+              transform: "scale(1.2)",
+              animation: "omTumble .5s ease-in-out infinite",
+            }}
+          >
+            <svg
+              viewBox={`${-BALL_BOX_W / 2} ${-BALL_BOX_H / 2} ${BALL_BOX_W} ${BALL_BOX_H}`}
+              width={BALL_BOX_W}
+              height={BALL_BOX_H}
+              style={{ display: "block", overflow: "visible" }}
+            >
+              <defs>
+                <linearGradient id="omLeather" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#cd7434" />
+                  <stop offset="60%" stopColor="#b25a23" />
+                  <stop offset="100%" stopColor="#9a4a1b" />
+                </linearGradient>
+                <clipPath id="omBallClip">
+                  <path d={BALL} />
+                </clipPath>
+              </defs>
+              <Ball />
+            </svg>
+          </div>
+        </div>
+      </div>
     </View>
   );
 }

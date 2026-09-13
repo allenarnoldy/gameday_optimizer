@@ -5,15 +5,34 @@ import { useTheme } from "../ThemeContext";
 import { currency } from "../utils/time";
 import { radius, space, type as T, APP_WIDTH } from "../theme";
 import { PosBadge, Chip } from "./ui";
-import { tnum, pressable } from "../fonts";
+import { tnum, pressable, toggleable } from "../fonts";
 
 export const POSITIONS = ["All", "QB", "RB", "WR", "TE", "DST"] as const;
 export type PosFilter = typeof POSITIONS[number];
 
-export function filterPool(players: Player[], posFilter: PosFilter): Player[] {
+export type SortKey = "proj" | "salary";
+export type SortDir = "desc" | "asc";
+export type Sort = { key: SortKey; dir: SortDir };
+export const DEFAULT_SORT: Sort = { key: "proj", dir: "desc" };
+
+export function filterPool(
+  players: Player[],
+  posFilter: PosFilter,
+  sort: Sort = DEFAULT_SORT,
+): Player[] {
+  const sign = sort.dir === "desc" ? -1 : 1;
   return (posFilter === "All" ? players : players.filter(p => p.pos === posFilter))
     .slice()
-    .sort((a, b) => b.proj - a.proj);
+    .sort((a, b) => {
+      const av = sort.key === "salary" ? (a.salary ?? 0) : a.proj;
+      const bv = sort.key === "salary" ? (b.salary ?? 0) : b.proj;
+      // Salaries tie constantly — DraftKings prices most of the bench at
+      // exactly $3,000 — so projection breaks the tie and keeps the order
+      // stable and useful rather than arbitrary.
+      if (av !== bv) return sign * (av - bv);
+      if (a.proj !== b.proj) return b.proj - a.proj;
+      return a.name.localeCompare(b.name);
+    });
 }
 
 /* ------------------------------------------------------------------ */
@@ -167,15 +186,73 @@ export function PlayerRow({
 /* Shared chrome                                                       */
 /* ------------------------------------------------------------------ */
 
+/**
+ * One sort option. Pressing the one already in use flips its direction, so
+ * both the key and the order are reachable without a second control.
+ *
+ * The caret shows on the active option only — on the inactive one it would be
+ * claiming an order that isn't in effect.
+ */
+function SortChip({
+  label, active, dir, onPress,
+}: { label: string; active: boolean; dir: SortDir; onPress: () => void }) {
+  const { C, isDark } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      {...toggleable}
+      accessibilityRole="button"
+      accessibilityLabel={
+        active
+          ? `Sorted by ${label}, ${dir === "desc" ? "highest first" : "lowest first"}. Press to reverse.`
+          : `Sort by ${label}`
+      }
+      style={{
+        minHeight: 40,
+        paddingVertical: 7,
+        paddingHorizontal: 12,
+        borderRadius: radius.full,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)",
+        borderWidth: 2,
+        borderColor: active ? C.primary : "transparent",
+      }}
+    >
+      <Text style={{ ...T.buttonMd, color: active ? C.link : C.inkMuted } as TextStyle}>
+        {label}
+      </Text>
+      {active ? (
+        <Text style={{ ...T.captionSm, color: C.link, lineHeight: 14 } as TextStyle}>
+          {dir === "desc" ? "↓" : "↑"}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
 export function PoolFilters({
-  posFilter, setPosFilter, excludedCount, onClearExcluded,
+  posFilter, setPosFilter, excludedCount, onClearExcluded, sort, setSort,
 }: {
   posFilter: PosFilter;
   setPosFilter: (p: PosFilter) => void;
   excludedCount: number;
   onClearExcluded: () => void;
+  sort: Sort;
+  setSort: (s: Sort) => void;
 }) {
   const { C } = useTheme();
+
+  const pick = (key: SortKey) =>
+    setSort(
+      sort.key === key
+        ? { key, dir: sort.dir === "desc" ? "asc" : "desc" }
+        // A new column starts high-to-low: that is what you want first of
+        // either money or points.
+        : { key, dir: "desc" },
+    );
+
   return (
     // minWidth 0 lets the row actually wrap: without it the chips size the
     // flex parent and run off the edge instead of breaking to a second line.
@@ -183,6 +260,36 @@ export function PoolFilters({
       {POSITIONS.map(pos => (
         <Chip key={pos} label={pos} active={posFilter === pos} onPress={() => setPosFilter(pos)} />
       ))}
+
+      {/* Sort sits with the filters rather than on the column headers: SALARY
+          is not rendered as a column on a phone, so headers would have left
+          half the sort unreachable exactly where the list is longest. */}
+      <View style={{ width: space.xs }} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: space.xxs }}>
+        <Text
+          style={{
+            ...T.captionSm,
+            color: C.inkFaint,
+            letterSpacing: 0.8,
+            marginRight: 2,
+          } as TextStyle}
+        >
+          SORT
+        </Text>
+        <SortChip
+          label="Proj"
+          active={sort.key === "proj"}
+          dir={sort.dir}
+          onPress={() => pick("proj")}
+        />
+        <SortChip
+          label="Salary"
+          active={sort.key === "salary"}
+          dir={sort.dir}
+          onPress={() => pick("salary")}
+        />
+      </View>
+
       {excludedCount > 0 ? (
         <Pressable
           onPress={onClearExcluded}
@@ -207,10 +314,16 @@ export function PoolFilters({
  * Column headers. The leading spacers mirror the row's checkbox and position
  * badge so PLAYER actually sits above the name rather than over the badge.
  */
-export function PoolColumns({ topRule }: { topRule?: boolean }) {
+export function PoolColumns({ topRule, sort }: { topRule?: boolean; sort?: Sort }) {
   const { C } = useTheme();
   const { width } = useWindowDimensions();
   const narrow = width < 560;
+  // The header marks which column the list is ordered by. It isn't the
+  // control — that's the chips above, which stay reachable when SALARY is
+  // dropped on a phone — it just says what you're looking at.
+  const caret = (key: SortKey) =>
+    sort?.key === key ? (sort.dir === "desc" ? " ↓" : " ↑") : "";
+  const tint = (key: SortKey) => (sort?.key === key ? C.link : C.inkFaint);
   return (
     <View
       style={{
@@ -228,9 +341,13 @@ export function PoolColumns({ topRule }: { topRule?: boolean }) {
       <View style={{ width: 40 }} />
       <Text style={{ ...T.captionSm, flex: 1, color: C.inkFaint, letterSpacing: 0.8 } as TextStyle}>PLAYER</Text>
       {narrow ? null : (
-        <Text style={{ ...T.captionSm, width: 62, textAlign: "right", color: C.inkFaint } as TextStyle}>SALARY</Text>
+        <Text style={{ ...T.captionSm, width: 62, textAlign: "right", color: tint("salary") } as TextStyle}>
+          SALARY{caret("salary")}
+        </Text>
       )}
-      <Text style={{ ...T.captionSm, width: 46, textAlign: "right", color: C.inkFaint } as TextStyle}>PROJ</Text>
+      <Text style={{ ...T.captionSm, width: 46, textAlign: "right", color: tint("proj") } as TextStyle}>
+        PROJ{caret("proj")}
+      </Text>
       {/* Two 34px toggles plus their gap and leading margin. */}
       <View style={{ width: 76 }} />
     </View>
@@ -255,7 +372,7 @@ export function PoolEmpty() {
  * the results take the column.
  */
 export default function InlinePool({
-  players, lockedIds, excludedIds, posFilter, setPosFilter,
+  players, lockedIds, excludedIds, posFilter, setPosFilter, sort, setSort,
   onLock, onExclude, onClearExcluded, style,
 }: {
   players: Player[];
@@ -263,13 +380,15 @@ export default function InlinePool({
   excludedIds: Set<string>;
   posFilter: PosFilter;
   setPosFilter: (p: PosFilter) => void;
+  sort: Sort;
+  setSort: (s: Sort) => void;
   onLock: (id: string) => void;
   onExclude: (id: string) => void;
   onClearExcluded: () => void;
   style?: ViewStyle;
 }) {
   const { C } = useTheme();
-  const rows = filterPool(players, posFilter);
+  const rows = filterPool(players, posFilter, sort);
   const excludedCount = players.reduce((n, p) => n + (excludedIds.has(p.id) ? 1 : 0), 0);
 
   return (
@@ -304,11 +423,13 @@ export default function InlinePool({
             setPosFilter={setPosFilter}
             excludedCount={excludedCount}
             onClearExcluded={onClearExcluded}
+            sort={sort}
+            setSort={setSort}
           />
         </View>
       </View>
 
-      <PoolColumns topRule />
+      <PoolColumns topRule sort={sort} />
 
       {rows.length === 0 ? (
         <PoolEmpty />
