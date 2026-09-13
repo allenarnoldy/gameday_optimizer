@@ -23,7 +23,8 @@ import { useTheme } from "../ThemeContext";
 import { radius, space, type as T, APP_WIDTH } from "../theme";
 import { Card, PillButton, PanelRightIcon } from "../components/ui";
 import ThrowLoader, {
-  THROW_BAR_HEIGHT, THROW_BAR_WIDTH, CTA_GRADIENT, CTA_BORDER, CTA_SHADOW,
+  THROW_BAR_HEIGHT, THROW_BAR_WIDTH, THROW_CYCLE_MS,
+  CTA_GRADIENT, CTA_BORDER, CTA_SHADOW,
 } from "../components/ThrowLoader";
 import { pressable } from "../fonts";
 
@@ -213,11 +214,32 @@ export default function HomeScreen() {
     if (!canGenerate) return;
     setGenerating(true);
     setPanelOpen(false);
-    setTimeout(() => {
+    const startedAt = Date.now();
+
+    /*
+     * Two frames before solving, not setTimeout(0).
+     *
+     * The solve blocks the main thread, so whatever hasn't reached the screen
+     * by the time it starts won't until it ends. A setTimeout(0) runs on the
+     * next task, which is still ahead of the next paint -- so the loader was
+     * being mounted and torn down again without ever being drawn. The first
+     * rAF runs before that paint; the second runs after it, by which point
+     * the bar is genuinely on screen.
+     */
+    requestAnimationFrame(() => requestAnimationFrame(() => {
       solve(solvePlayers);
-      setGenerated(true);
-      setGenerating(false);
-    }, 0);
+      /*
+       * Then hold the bar for one complete throw, so a slate small enough to
+       * solve instantly still shows the ball rather than a flash of blue.
+       * Results are already computed here; this only defers showing them, and
+       * on a full slate the solve alone outlasts it.
+       */
+      const elapsed = Date.now() - startedAt;
+      setTimeout(() => {
+        setGenerated(true);
+        setGenerating(false);
+      }, Math.max(0, THROW_CYCLE_MS - elapsed));
+    }));
   };
 
   /* ---- Settings popover ---- */

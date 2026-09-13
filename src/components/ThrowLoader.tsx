@@ -16,9 +16,11 @@ import { throwState } from "../fonts";
  * far end, tumbling as it goes.
  *
  * Drawn as DOM/SVG rather than react-native-svg, which isn't a dependency
- * here, and animated in CSS (see fonts.ts) rather than with Animated: solving
- * blocks the main thread, so a JS-driven animation would stall exactly when it
- * is meant to show progress. Native has neither and keeps the platform spinner
+ * here. Everything moves in CSS rather than with Animated, and only via
+ * transform and opacity: solving blocks the main thread for over a second, so
+ * anything else stalls exactly when it is meant to be showing progress. The
+ * shared keyframes live in fonts.ts; the throw itself is width-dependent and
+ * is generated below. Native has none of this and keeps the platform spinner
  * on the flat brand fill.
  */
 
@@ -27,7 +29,7 @@ const H = 56;
 /** The design's reference width, used only until the real one is measured. */
 const W0 = 420;
 
-/** Football, centred on the origin so offset-path can carry it. */
+/** Football, centred on the origin so the fly transform can carry it. */
 const BALL =
   "M -20 0 C -18 -8, -9 -12.6, 0 -12.6 C 9 -12.6, 18 -8, 20 0 " +
   "C 18 8, 9 12.6, 0 12.6 C -9 12.6, -18 8, -20 0 Z";
@@ -38,6 +40,8 @@ const HASH_LEN = 14;
 
 export const THROW_BAR_HEIGHT = H;
 export const THROW_BAR_WIDTH = W0;
+/** One complete throw, in ms. Callers hold the bar up at least this long. */
+export const THROW_CYCLE_MS = 1250;
 
 /**
  * The bar's own surface. The idle CTA borrows it so that starting a solve
@@ -49,10 +53,65 @@ export const CTA_BORDER = "#9cc3ea";
 export const CTA_SHADOW =
   "0 1px 0 rgba(255,255,255,0.18) inset, 0 6px 22px rgba(13,110,208,0.34)";
 
-/** The design's arc, expressed as fractions of the bar so it can span any width. */
-function arcPath(w: number) {
-  const x = (f: number) => +(w * f).toFixed(2);
-  return `M ${x(16 / W0)} 42 C ${x(100 / W0)} -16, ${x(320 / W0)} -16, ${x(404 / W0)} 42`;
+/** The design's arc control points, as fractions of the bar's width. */
+const P = [16 / W0, 100 / W0, 320 / W0, 404 / W0];
+const Y = [42, -16, -16, 42];
+
+/** Position and tangent angle at t along that cubic. */
+function arcAt(w: number, t: number) {
+  const u = 1 - t;
+  const bez = (a: number, b: number, c: number, d: number) =>
+    u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
+  const dbez = (a: number, b: number, c: number, d: number) =>
+    3 * u * u * (b - a) + 6 * u * t * (c - b) + 3 * t * t * (d - c);
+  const x = bez(P[0] * w, P[1] * w, P[2] * w, P[3] * w);
+  const y = bez(Y[0], Y[1], Y[2], Y[3]);
+  const dx = dbez(P[0] * w, P[1] * w, P[2] * w, P[3] * w);
+  const dy = dbez(Y[0], Y[1], Y[2], Y[3]);
+  return { x, y, a: (Math.atan2(dy, dx) * 180) / Math.PI };
+}
+
+/** The design's fade: in over the first tenth, out over the last eighth. */
+function flyOpacity(t: number) {
+  if (t < 0.1) return t / 0.1;
+  if (t > 0.88) return Math.max(0, 1 - (t - 0.88) / 0.12);
+  return 1;
+}
+
+const injectedFly = new Set<string>();
+
+/**
+ * The throw, sampled off the arc into transform keyframes.
+ *
+ * The design drives the ball with offset-path/offset-distance, which reads
+ * beautifully but is not a compositor property: it animates on the main
+ * thread, and the whole point of this bar is to play while the main thread is
+ * busy solving. Sampled into translate+rotate it composites, and keeps moving
+ * through the solve -- which the scrolling yard marks, a plain transform,
+ * already demonstrated they could.
+ *
+ * The keyframes depend on the bar's width, so each width gets its own rule,
+ * injected once.
+ */
+function ensureFlyKeyframes(w: number): string {
+  const name = `omFly_${w}`;
+  if (injectedFly.has(name) || typeof document === "undefined") return name;
+  injectedFly.add(name);
+
+  const STEPS = 32;
+  const frames: string[] = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const t = i / STEPS;
+    const { x, y, a } = arcAt(w, t);
+    frames.push(
+      `${(t * 100).toFixed(3)}%{transform:translate(${x.toFixed(2)}px,${y.toFixed(2)}px)` +
+      `rotate(${a.toFixed(2)}deg);opacity:${flyOpacity(t).toFixed(3)}}`
+    );
+  }
+  const el = document.createElement("style");
+  el.textContent = `@keyframes ${name}{${frames.join("")}}`;
+  document.head.appendChild(el);
+  return name;
 }
 
 /** Enough marks to cover the bar plus one pitch, so the scroll never runs dry. */
@@ -118,7 +177,7 @@ function Ball() {
 
 export default function ThrowLoader({
   /** Seconds for one throw. The design's default. */
-  throwSeconds = 1.25,
+  throwSeconds = THROW_CYCLE_MS / 1000,
   showTrail = true,
   style,
 }: {
@@ -153,7 +212,9 @@ export default function ThrowLoader({
   };
 
   const dur = `${throwSeconds}s`;
-  const arc = arcPath(w);
+  const flyName = ensureFlyKeyframes(w);
+  const mid = arcAt(w, 0.5);
+  const rest = `translate(${mid.x.toFixed(2)}px,${mid.y.toFixed(2)}px) rotate(${mid.a.toFixed(2)}deg)`;
 
   return (
     <View
@@ -183,12 +244,25 @@ export default function ThrowLoader({
         the bar — and it lets the hash keyframe's 48px step land exactly one
         yard mark along.
       */}
+      {/*
+        Positioned out of flow on purpose. In flow, the viewBox plus a fixed
+        height gives the <svg> an intrinsic width, which becomes this flex
+        item's basis -- so the bar refused to shrink and pushed the reload
+        button onto a row of its own on a phone. Absolute, it contributes no
+        width and the bar takes whatever the row leaves it.
+      */}
       <svg
         viewBox={`0 0 ${w} ${H}`}
-        width="100%"
-        height={H}
         preserveAspectRatio="none"
-        style={{ display: "block", overflow: "visible" }}
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: "100%",
+          height: "100%",
+          display: "block",
+          overflow: "visible",
+        }}
       >
         <defs>
           <linearGradient id="omLeather" x1="0" y1="0" x2="0" y2="1">
@@ -208,6 +282,11 @@ export default function ThrowLoader({
             <stop offset="0%" stopColor="#ffffff" stopOpacity={0.55} />
             <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
           </radialGradient>
+          {/* The streak fades out behind the ball. */}
+          <linearGradient id="omTrailG" gradientUnits="userSpaceOnUse" x1="-80" y1="0" x2="-26" y2="0">
+            <stop offset="0%" stopColor="#dfeeff" stopOpacity={0} />
+            <stop offset="100%" stopColor="#dfeeff" stopOpacity={0.55} />
+          </linearGradient>
         </defs>
 
         <g clipPath="url(#omBar)">
@@ -216,34 +295,14 @@ export default function ThrowLoader({
             <path d={hashPath(w)} stroke="#dfeeff" strokeWidth={2} strokeLinecap="round" />
           </g>
 
-          {showTrail ? (
-            /*
-              pathLength normalises the arc to 100 units, so the dash keyframes
-              in fonts.ts stay correct at every bar width.
-            */
-            <path
-              data-throw="trail"
-              d={arc}
-              pathLength={100}
-              fill="none"
-              stroke="#dfeeff"
-              strokeOpacity={0.5}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeDasharray="16 200"
-              style={{ animation: `omTrail ${dur} linear infinite` }}
-            />
-          ) : null}
-
           <g
             data-throw="ball"
-            style={
-              {
-                offsetPath: `path('${arc}')`,
-                offsetRotate: "auto",
-                animation: `omFly ${dur} linear infinite`,
-              } as any
-            }
+            style={{
+              // Resting value: mid-arc, so reduced motion parks the ball at
+              // the top of the throw rather than at the keyframe's origin.
+              transform: rest,
+              animation: `${flyName} ${dur} linear infinite`,
+            }}
           >
             <ellipse
               data-throw="glow"
@@ -254,6 +313,24 @@ export default function ThrowLoader({
               fill="url(#omGlowG)"
               style={{ animation: "omGlow .9s ease-in-out infinite" }}
             />
+            {showTrail ? (
+              /*
+                The streak rides with the ball instead of being a dash crawling
+                along a static path. stroke-dashoffset is a main-thread
+                property and would freeze during the solve; carried inside this
+                group it inherits the composited transform. The group is
+                rotated to the path tangent, so a flat streak behind the ball
+                stays tangent to the arc.
+              */
+              <path
+                data-throw="trail"
+                d="M -80 0 L -26 0"
+                fill="none"
+                stroke={`url(#omTrailG)`}
+                strokeWidth={2.5}
+                strokeLinecap="round"
+              />
+            ) : null}
             <Ball />
           </g>
         </g>

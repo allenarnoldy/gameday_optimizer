@@ -54,11 +54,20 @@ export async function fetchDKPlayersForGroup(draftGroupId: number): Promise<Play
 
       // DST has empty last name — fn is the team city/nickname
       const name = p.ln ? `${p.fn} ${p.ln}` : p.fn;
+      /*
+       * `ppg` is DraftKings' average fantasy points per game *last season*,
+       * not a projection for this week. It is 0 for every rookie and everyone
+       * who didn't play, which in Week 1 is a large part of the slate — so it
+       * is only a fallback for players Sleeper has no line on, and it must not
+       * be used to decide who belongs in the pool. Dropping ppg === 0 here
+       * used to cut 336 of 746 players before the merge ever saw them,
+       * including rookies DraftKings prices as starters.
+       */
       const proj = parseFloat(p.ppg) || 0;
 
       return [{ id: `dk-${p.pid}`, name, team, opp, pos, salary: p.s, proj, projSource: "DK Avg" as const }];
     })
-    .filter(p => !p.name.includes("undefined") && p.proj > 0);
+    .filter(p => !p.name.includes("undefined"));
 }
 
 export async function fetchDKCurrentWeek(): Promise<{ players: Player[]; contestName: string }> {

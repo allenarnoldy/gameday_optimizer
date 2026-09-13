@@ -13,6 +13,10 @@ function normalize(name: string): string {
  * Overlay Sleeper (or any other source) projections onto a DraftKings player list.
  * DK provides accurate salaries + game context; Sleeper provides better projections.
  * Falls back to DK's own ppg average if no Sleeper match is found.
+ *
+ * Players left with nothing to project from are dropped here, at the end --
+ * never upstream on DK's ppg alone, which is last season's average and so is 0
+ * for every rookie on the slate. Sleeper is what rescues them.
  */
 export function mergeProjectionsIntoDK(dkPlayers: Player[], projPlayers: Player[]): Player[] {
   const byName = new Map<string, Player>();
@@ -26,16 +30,18 @@ export function mergeProjectionsIntoDK(dkPlayers: Player[], projPlayers: Player[
   // Max realistic single-week PPR score — anything above this is a season total
   const WEEKLY_MAX = 60;
 
-  return dkPlayers.map(dk => {
-    const match =
-      dk.pos === "DST"
-        ? byTeamDST.get(dk.team)
-        : byName.get(normalize(dk.name));
+  return dkPlayers
+    .map(dk => {
+      const match =
+        dk.pos === "DST"
+          ? byTeamDST.get(dk.team)
+          : byName.get(normalize(dk.name));
 
-    if (match && match.proj <= WEEKLY_MAX) {
-      return { ...dk, proj: match.proj, projSource: "Sleeper" as const };
-    }
-    // Sleeper has season totals instead of weekly projections (preseason) — use DK avg
-    return dk;
-  });
+      if (match && match.proj <= WEEKLY_MAX) {
+        return { ...dk, proj: match.proj, projSource: "Sleeper" as const };
+      }
+      // Sleeper has season totals instead of weekly projections (preseason) — use DK avg
+      return dk;
+    })
+    .filter(p => p.proj > 0);
 }
