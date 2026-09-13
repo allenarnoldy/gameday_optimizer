@@ -1,8 +1,8 @@
 import React from "react";
-import { View, Text, Pressable, Platform, ActivityIndicator, ViewStyle, TextStyle } from "react-native";
+import { View, Text, Pressable, Platform, ViewStyle, TextStyle } from "react-native";
 import { useTheme } from "../ThemeContext";
 import { radius, space, type as T } from "../theme";
-import { pressable, toggleable, throwState } from "../fonts";
+import { pressable, toggleable } from "../fonts";
 
 /* ------------------------------------------------------------------ */
 /* Gradient helper                                                     */
@@ -96,76 +96,6 @@ export function PillButton({
         </Text>
       ) : null}
     </Pressable>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Throwing football                                                   */
-/* ------------------------------------------------------------------ */
-/**
- * The busy state for Generate: a ball thrown across the button, spinning.
- *
- * It takes the app icon's black-and-white football rather than the loader's
- * brown leather — on the blue fill the brown goes muddy at this size, while
- * black and white stays crisp and matches the mark in the nav.
- *
- * The motion is CSS (see fonts.ts): solving blocks the main thread, so an
- * Animated version would stall precisely while it is meant to show progress.
- * Native has no such stylesheet and falls back to the platform spinner.
- */
-export function ThrowingBall() {
-  if (Platform.OS !== "web") {
-    return <ActivityIndicator size="small" color="#ffffff" />;
-  }
-
-  const W = 26;
-  const H = 15;
-
-  return (
-    // The track reserves the arc's full width so the button doesn't resize
-    // as the ball travels.
-    <View style={{ width: 128, height: 26, alignItems: "center", justifyContent: "center" }}>
-      <View
-        {...throwState}
-        style={{
-          width: W,
-          height: H,
-          ...({ borderRadius: "50%" } as any),
-          backgroundColor: "#0d1117",
-          borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.35)",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-        }}
-      >
-        {/* Lace panel — long enough to read as lacing rather than a hash */}
-        <View
-          style={{
-            position: "absolute",
-            left: "28%",
-            top: "44%",
-            width: "44%",
-            height: "12%",
-            backgroundColor: "#ffffff",
-          }}
-        />
-        {/* Three stitches across it */}
-        {[34, 48, 62].map(left => (
-          <View
-            key={left}
-            style={{
-              position: "absolute",
-              left: `${left}%`,
-              top: "31%",
-              width: "5%",
-              height: "38%",
-              backgroundColor: "#ffffff",
-            }}
-          />
-        ))}
-      </View>
-    </View>
   );
 }
 

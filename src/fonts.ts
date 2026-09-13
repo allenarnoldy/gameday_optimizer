@@ -125,19 +125,55 @@ export function installFonts() {
       mask-image: radial-gradient(72% 62% at 62% 50%, #000 42%, rgba(0,0,0,0.55) 66%, transparent 84%);
     }
 
-    /* ---- Generate button: the ball in flight ----
-       Deliberately CSS rather than Animated. Solving blocks the main thread,
-       which would freeze a JS-driven animation exactly when it is meant to be
-       reassuring; a compositor-driven transform/opacity animation keeps
-       flying through the block. */
-    @keyframes ballThrow {
-      0%   { transform: translate(-52px, 7px) rotate(0deg) scale(0.8);  opacity: 0; }
-      14%  { opacity: 1; }
-      50%  { transform: translate(0px, -8px) rotate(340deg) scale(1); }
-      86%  { opacity: 1; }
-      100% { transform: translate(52px, 7px) rotate(680deg) scale(0.8); opacity: 0; }
+    /* ---- Generate button: the football throw ----
+       From the Football Throw Loader design. The bar is the field: yard marks
+       scroll past underneath while the ball is thrown along an arc that rises
+       out of the bar and lands at the far end.
+
+       Deliberately CSS rather than Animated, because solving blocks the main
+       thread — a JS-driven animation would stall exactly when it is meant to
+       show progress. */
+    @keyframes omFly {
+      0%   { offset-distance: 0%;   opacity: 0; }
+      10%  { opacity: 1; }
+      88%  { opacity: 1; }
+      100% { offset-distance: 100%; opacity: 0; }
     }
-    [data-throw="true"] { animation: ballThrow 900ms linear infinite; }
+    @keyframes omTumble {
+      0%, 100% { transform: rotate(-6deg) scale(1.2); }
+      50%      { transform: rotate(6deg) scale(1.2); }
+    }
+    /* The trail path carries pathLength="100", so these run in hundredths of
+       the arc rather than in pixels and stay correct at every bar width.
+       The dash ends a shade ahead of the ball, as in the design, so it reads
+       as air being cut rather than as a tail being dragged. */
+    @keyframes omTrail {
+      from { stroke-dashoffset: 16px; }
+      to   { stroke-dashoffset: -91px; }
+    }
+    @keyframes omHash { to { transform: translateX(-48px); } }
+    @keyframes omGlow { 0%, 100% { opacity: .30; } 50% { opacity: .55; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      [data-throw="true"], [data-throw="true"] * { animation: none !important; }
+      /* Parked at the top of the throw rather than dumped at the start of it:
+         with every animation off the ball's resting offset is 0%, which put a
+         motionless football at the left edge and read as a stalled upload.
+         The glow keeps breathing underneath it — a pulse is not the kind of
+         motion this setting is asking us to drop, and something has to say
+         the app is still working. */
+      [data-throw="true"] [data-throw="ball"] { offset-distance: 50% !important; }
+      [data-throw="true"] [data-throw="glow"] {
+        animation: omGlow 1.8s ease-in-out infinite !important;
+      }
+      /* The dash is a motion streak; parked it is just a stray mark at the far
+         end of the bar. Drawn whole instead, it becomes the arc the ball is
+         sitting on. */
+      [data-throw="true"] [data-throw="trail"] {
+        stroke-dasharray: none !important;
+        stroke-opacity: 0.28 !important;
+      }
+    }
 
     /* Settings popover: fades and lifts into place from under the pill. */
     [data-pop] {
@@ -150,8 +186,6 @@ export function installFonts() {
        movement goes. */
     @media (prefers-reduced-motion: reduce) {
       [data-pop] { transition: opacity 140ms ease; transform: none !important; }
-      /* The ball holds still and just pulses, so the button still reads as busy. */
-      [data-throw="true"] { animation: none; opacity: 1; transform: none; }
       [data-press="true"] { transition: background-color 140ms ease; transform: none !important; }
       [data-rise="true"]  { animation: none; opacity: 1; }
       [data-drawer]       { transition: opacity 160ms ease; transform: none !important; }

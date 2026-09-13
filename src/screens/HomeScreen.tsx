@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View, Text, ScrollView, ActivityIndicator, Alert, Pressable,
+  View, Text, ScrollView, ActivityIndicator, Alert, Pressable, Platform,
   useWindowDimensions, TextStyle,
 } from "react-native";
 
@@ -21,8 +21,25 @@ import { SummaryPill, SettingsPopover, Draft, Anchor, Scoring } from "../compone
 import { buildTopLineups } from "../optimizer";
 import { useTheme } from "../ThemeContext";
 import { radius, space, type as T, APP_WIDTH } from "../theme";
-import { Card, PillButton, PanelRightIcon, ThrowingBall } from "../components/ui";
+import { Card, PillButton, PanelRightIcon } from "../components/ui";
+import ThrowLoader, {
+  THROW_BAR_HEIGHT, THROW_BAR_WIDTH, CTA_GRADIENT, CTA_BORDER, CTA_SHADOW,
+} from "../components/ThrowLoader";
 import { pressable } from "../fonts";
+
+/**
+ * The one CTA on the page wears the loader's own bar, so the throw can take
+ * the button over without it resizing or changing colour underneath.
+ * Disabled keeps the plain fill — a lit bar that can't be pressed is a lie.
+ */
+function ctaSurface(enabled: boolean) {
+  if (!enabled || Platform.OS !== "web") return {};
+  return {
+    borderWidth: 1.5,
+    borderColor: CTA_BORDER,
+    ...({ backgroundImage: CTA_GRADIENT, boxShadow: CTA_SHADOW } as any),
+  };
+}
 
 export default function HomeScreen() {
   const { C } = useTheme();
@@ -249,6 +266,17 @@ export default function HomeScreen() {
 
   const column = { width: "100%" as const, maxWidth: APP_WIDTH, alignSelf: "center" as const };
 
+  // Shared by the idle button and the loader so the swap holds its footprint.
+  // Capped at the design's bar width: the throw's arc only has the bar's 56px
+  // of height to rise through, so stretching it across a 840px desktop column
+  // flattened it into a straight line and it stopped reading as a throw.
+  const ctaSize = {
+    flexGrow: 1, flexShrink: 1,
+    minWidth: isNarrow ? 0 : 280,
+    maxWidth: THROW_BAR_WIDTH,
+    height: THROW_BAR_HEIGHT,
+  };
+
   // Full-screen only on the first load. A manual refresh keeps the user's
   // place and reports through the button's own spinner instead.
   const firstLoad = !!loading && players.length === 0;
@@ -272,16 +300,20 @@ export default function HomeScreen() {
           <View style={{ ...column, flexDirection: "row", gap: space.sm, flexWrap: "wrap", alignItems: "center" }}>
             {/* Generate and refresh share a line at every width - a full-width
                 Generate would push the reload button onto a row of its own. */}
-            {/* While solving, the label gives way to the ball in flight. */}
-            <PillButton
-              label={generating ? undefined : "Generate lineups"}
-              onPress={handleGenerate}
-              disabled={!canGenerate}
-              accessibilityLabel={generating ? "Solving lineups" : undefined}
-              style={{ flexGrow: 1, flexShrink: 1, minWidth: isNarrow ? 0 : 280 }}
-            >
-              {generating ? <ThrowingBall /> : null}
-            </PillButton>
+            {/* While solving, the button becomes the field and the throw
+                plays across it. Both states are the same bar — same height,
+                same gradient, same rim — so starting a solve changes what is
+                on the button, not the button. */}
+            {generating ? (
+              <ThrowLoader style={ctaSize} />
+            ) : (
+              <PillButton
+                label="Generate lineups"
+                onPress={handleGenerate}
+                disabled={!canGenerate}
+                style={{ ...ctaSize, ...ctaSurface(canGenerate) }}
+              />
+            )}
 
             <Pressable
               onPress={() => fetchAll()}
