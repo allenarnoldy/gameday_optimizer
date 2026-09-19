@@ -14,7 +14,7 @@ import { fetchDKCurrentWeek } from "../api/draftkings";
 import { mergeProjectionsIntoDK } from "../utils/merge";
 import LineupCard from "../components/LineupCard";
 import PlayerPanel from "../components/PlayerPanel";
-import FootballLoader from "../components/FootballLoader";
+import BootLoader from "../components/BootLoader";
 import HeroBand from "../components/HeroBand";
 import InlinePool, { PosFilter, Sort, DEFAULT_SORT } from "../components/PlayerPool";
 import { SummaryPill, SettingsPopover, Draft, Anchor, Scoring } from "../components/Settings";
@@ -457,7 +457,7 @@ export default function HomeScreen() {
         onApply={applySettings}
       />
 
-      {firstLoad && <FootballLoader />}
+      {firstLoad && <BootLoader />}
     </>
   );
 }
