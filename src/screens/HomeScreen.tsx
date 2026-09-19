@@ -457,7 +457,9 @@ export default function HomeScreen() {
         onApply={applySettings}
       />
 
-      {firstLoad && <BootLoader />}
+      {/* Stays mounted past firstLoad: the loader finishes its cycle and
+          fades itself out, rather than being cut off the instant data lands. */}
+      <BootLoader active={firstLoad} />
     </>
   );
 }

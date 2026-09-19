@@ -50,6 +50,27 @@ const ACCENT = "#2f8cff";
 const CYCLE_MS = 5200;
 
 /**
+ * How long the loader insists on staying up, in whole cycles.
+ *
+ * The slate often lands in a few hundred ms — on a warm cache, faster than
+ * the scan line finishes opening — so without a floor the boot screen is a
+ * flash and the sequence never plays. Whole cycles rather than an arbitrary
+ * number of ms: the cycle ends on its quietest frame, with the icon
+ * dissolved and the status faded, so the exit has something to leave on.
+ */
+const MIN_CYCLES = 1;
+
+/** The fade out, once the wait is genuinely over. */
+const EXIT_MS = 420;
+
+/**
+ * Reduced motion gets a short floor instead of a full cycle. That path is
+ * deliberately still, so holding someone on it for 5.2s is a delay with
+ * nothing to show for it — long enough not to flash, and no longer.
+ */
+const REDUCED_HOLD_MS = 700;
+
+/**
  * What the app is actually doing while this is up. The design canvas shipped
  * generic sample copy ("Fetching today's fixtures", "Checking the score");
  * these are the app's real first-load steps, carried over from the loader
@@ -140,6 +161,14 @@ export type BootLoaderProps = {
   phrases?: string[];
   /** Pins a single line instead of cycling — for a known, specific wait. */
   message?: string | null;
+  /**
+   * Whether the app is still busy. Turning this false does not remove the
+   * loader — it lets it finish. Keep the element mounted and let it leave on
+   * its own; it renders null once it has.
+   */
+  active?: boolean;
+  /** Cycles to complete before honouring `active: false`. 0 leaves at once. */
+  minCycles?: number;
 };
 
 export default function BootLoader({
@@ -147,6 +176,8 @@ export default function BootLoader({
   durationMs = CYCLE_MS,
   phrases = PHRASES,
   message = null,
+  active = true,
+  minCycles = MIN_CYCLES,
 }: BootLoaderProps) {
   const { width, height } = useWindowDimensions();
   const reduced = useReducedMotion();
@@ -170,6 +201,44 @@ export default function BootLoader({
     return () => clearInterval(id);
   }, [message, durationMs, phrases.length]);
 
+  /**
+   * Minimum time on screen.
+   *
+   * `active` goes false the instant the slate lands, which is often long
+   * before the sequence has played. So the loader serves out the rest of the
+   * cycle it is in, then fades and unmounts itself — the caller keeps it
+   * mounted and this decides when it is done. A wait that outlasts the floor
+   * skips straight to the fade, so a slow load is never padded.
+   */
+  const exit = useRef(new Animated.Value(1)).current;
+  const shownAt = useRef(Date.now());
+  const [present, setPresent] = useState(active);
+
+  useEffect(() => {
+    if (!active) return;
+    // A fresh boot: restart the clock and undo any fade left from the last.
+    shownAt.current = Date.now();
+    exit.setValue(1);
+    setPresent(true);
+  }, [active, exit]);
+
+  useEffect(() => {
+    if (!active) {
+      const hold = reduced ? REDUCED_HOLD_MS : durationMs * minCycles;
+      const id = setTimeout(
+        () =>
+          Animated.timing(exit, {
+            toValue: 0,
+            duration: EXIT_MS,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }).start(({ finished }) => finished && setPresent(false)),
+        Math.max(0, hold - (Date.now() - shownAt.current))
+      );
+      return () => clearTimeout(id);
+    }
+  }, [active, reduced, durationMs, minCycles, exit]);
+
   const shell = {
     position: "absolute" as const,
     top: 0,
@@ -182,7 +251,13 @@ export default function BootLoader({
     paddingVertical: PAD_Y,
     paddingHorizontal: PAD_X,
     overflow: "hidden" as const,
+    // While the app is busy this blocks the UI underneath, which is the
+    // point. Once it isn't, the fade is still on screen for EXIT_MS — long
+    // enough to swallow the first tap on a screen the user can already see.
+    pointerEvents: (active ? "auto" : "none") as "auto" | "none",
   };
+
+  if (!present) return null;
 
   if (!WEB) {
     return (
@@ -195,6 +270,7 @@ export default function BootLoader({
         foot={foot}
         reduced={reduced}
         shell={shell}
+        exit={exit}
       />
     );
   }
@@ -202,10 +278,10 @@ export default function BootLoader({
   const cycle = `${durationMs}ms`;
 
   return (
-    <View
+    <Animated.View
       accessibilityRole="progressbar"
       accessibilityLabel="Loading"
-      style={[shell, gradient(CANVAS, CANVAS_FLAT)]}
+      style={[shell, gradient(CANVAS, CANVAS_FLAT), { opacity: exit }]}
     >
       {/* Ambient haze — two off-centre accent blooms drifting on their own
           nine-second clock, independent of the boot cycle. */}
@@ -386,7 +462,7 @@ export default function BootLoader({
           )}
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -414,6 +490,7 @@ function BootNative({
   foot,
   reduced,
   shell,
+  exit,
 }: {
   accent: string;
   durationMs: number;
@@ -423,6 +500,8 @@ function BootNative({
   foot: number;
   reduced: boolean;
   shell: any;
+  /** The parent's fade-out; see the minimum-on-screen note in BootLoader. */
+  exit: Animated.Value;
 }) {
   const enter = useRef(new Animated.Value(0)).current;
   const bob = useRef(new Animated.Value(0)).current;
@@ -513,10 +592,10 @@ function BootNative({
   const sweepX = sweep.interpolate({ inputRange: [0, 1], outputRange: [-bar, bar * 3.2] });
 
   return (
-    <View
+    <Animated.View
       accessibilityRole="progressbar"
       accessibilityLabel="Loading"
-      style={[shell, { backgroundColor: CANVAS_FLAT }]}
+      style={[shell, { backgroundColor: CANVAS_FLAT, opacity: exit }]}
     >
       <View style={{ width: stage, height: stage, alignItems: "center", justifyContent: "center" }}>
         {/* Flat stand-in for the blurred radial glow, kept faint — at this
@@ -587,6 +666,6 @@ function BootNative({
           )}
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
