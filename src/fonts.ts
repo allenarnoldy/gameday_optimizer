@@ -153,6 +153,148 @@ export function installFonts() {
       }
     }
 
+    /* ---- Boot loader: the first-load splash ----
+       From the App Boot Loader design. One cycle: a scan line snaps open
+       across the stage, the icon resolves out of blur while a diagonal wipe
+       uncovers it and a gloss sweeps across, then the rule draws and the
+       status line rises. The whole thing loops until the slate arrives.
+
+       Everything accent-tinted is set inline (the accent is a prop); what
+       lives here is the part RN Web's style prop cannot express — mask
+       images, mix-blend-mode, filters — plus the keyframes themselves.
+       None of these reference the accent, so one static sheet serves every
+       accent. Only animation-duration is set inline, which is why the rules
+       below use longhands: the shorthand would reset it. */
+    @keyframes omBootLine {
+      0%, 2%   { transform: scaleX(0);    opacity: 0; }
+      6%       { transform: scaleX(.06);  opacity: 1; }
+      13%      { transform: scaleX(1);    opacity: 1; }
+      19%      { transform: scaleX(1.25); opacity: 0; }
+      100%     { transform: scaleX(1.25); opacity: 0; }
+    }
+    @keyframes omBootIcon {
+      0%, 6%  { opacity: 0; transform: scale(1.34) translateY(14px); filter: blur(22px) saturate(.4); }
+      14%     { opacity: .55; filter: blur(14px) saturate(.6); }
+      26%     { opacity: .92; filter: blur(6px) saturate(.9); }
+      42%     { opacity: 1; transform: scale(1.015) translateY(0);   filter: blur(0) saturate(1.04); }
+      62%     { transform: scale(1) translateY(-4px); }
+      86%     { opacity: 1; transform: scale(1.005) translateY(0); filter: blur(0) saturate(1.04); }
+      96%,100%{ opacity: 0; transform: scale(.985) translateY(-2px); filter: blur(6px) saturate(.7); }
+    }
+    @keyframes omBootWipe {
+      0%, 6%  { -webkit-mask-position: 0% 50%; mask-position: 0% 50%; }
+      46%,100%{ -webkit-mask-position: 100% 50%; mask-position: 100% 50%; }
+    }
+    @keyframes omBootGloss {
+      0%, 26% { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+      31%     { opacity: .85; }
+      46%     { transform: translateX(130%) skewX(-18deg);  opacity: 0; }
+      100%    { transform: translateX(130%) skewX(-18deg);  opacity: 0; }
+    }
+    @keyframes omBootGlow {
+      0%, 10% { opacity: 0; transform: scale(.6); }
+      30%     { opacity: .95; transform: scale(1.12); }
+      55%     { opacity: .6;  transform: scale(1); }
+      80%     { opacity: .78; transform: scale(1.05); }
+      95%,100%{ opacity: 0;  transform: scale(.94); }
+    }
+    @keyframes omBootFoot {
+      0%, 44% { opacity: 0; transform: translateY(8px); letter-spacing: .46em; }
+      56%     { opacity: 1; transform: translateY(0);   letter-spacing: .30em; }
+      88%     { opacity: 1; transform: translateY(0);   letter-spacing: .30em; }
+      96%,100%{ opacity: 0; transform: translateY(-4px); letter-spacing: .30em; }
+    }
+    @keyframes omBootRule {
+      0%, 46% { transform: scaleX(0); opacity: 0; }
+      60%     { transform: scaleX(1); opacity: 1; }
+      88%     { transform: scaleX(1); opacity: 1; }
+      96%,100%{ transform: scaleX(1); opacity: 0; }
+    }
+    @keyframes omBootSweep {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(320%); }
+    }
+    @keyframes omBootHaze {
+      0%, 100% { opacity: .35; transform: translate3d(0,0,0) scale(1); }
+      50%      { opacity: .6;  transform: translate3d(0,-8px,0) scale(1.06); }
+    }
+    /* Opacity-only pulse for the reduced-motion path below. */
+    @keyframes omBootBreathe { 0%, 100% { opacity: .45; } 50% { opacity: .8; } }
+
+    [data-boot] { animation-iteration-count: infinite; }
+    [data-boot="haze"] {
+      animation: omBootHaze 9s ease-in-out infinite;
+    }
+    /* isolation keeps the gloss's screen blend inside the stage, so it lifts
+       the icon and the glow rather than the page behind them. */
+    [data-boot="stage"] { isolation: isolate; }
+    [data-boot="glow"] {
+      filter: blur(18px);
+      animation-name: omBootGlow;
+      animation-timing-function: cubic-bezier(.22,.7,.2,1);
+    }
+    [data-boot="line"] {
+      animation-name: omBootLine;
+      animation-timing-function: cubic-bezier(.16,.84,.3,1);
+    }
+    [data-boot="icon"] {
+      animation-name: omBootIcon;
+      animation-timing-function: cubic-bezier(.16,.84,.24,1);
+      will-change: transform, opacity, filter;
+    }
+    /* The wipe is a mask three times the layer's width, slid from one end to
+       the other — so the soft diagonal edge travels across the icon. */
+    [data-boot="wipe"] {
+      -webkit-mask-image: linear-gradient(104deg, transparent 0 22%, rgba(0,0,0,.18) 34%, rgba(0,0,0,.55) 46%, rgba(0,0,0,.88) 58%, #000 70%, #000 100%);
+      mask-image: linear-gradient(104deg, transparent 0 22%, rgba(0,0,0,.18) 34%, rgba(0,0,0,.55) 46%, rgba(0,0,0,.88) 58%, #000 70%, #000 100%);
+      -webkit-mask-size: 300% 140%; mask-size: 300% 140%;
+      -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+      animation-name: omBootWipe;
+      animation-timing-function: cubic-bezier(.32,.62,.24,1);
+    }
+    /* Feathers the square icon into the ground so it reads as lit, not pasted. */
+    [data-boot="vignette"] {
+      -webkit-mask-image: radial-gradient(closest-side ellipse at 50% 50%, #000 30%, rgba(0,0,0,.72) 62%, rgba(0,0,0,.28) 84%, transparent 100%);
+      mask-image: radial-gradient(closest-side ellipse at 50% 50%, #000 30%, rgba(0,0,0,.72) 62%, rgba(0,0,0,.28) 84%, transparent 100%);
+    }
+    [data-boot="gloss"] {
+      filter: blur(10px);
+      mix-blend-mode: screen;
+      animation-name: omBootGloss;
+      animation-timing-function: cubic-bezier(.3,.1,.2,1);
+    }
+    [data-boot="rule"] {
+      animation-name: omBootRule;
+      animation-timing-function: cubic-bezier(.16,.84,.3,1);
+    }
+    [data-boot="foot"] {
+      animation-name: omBootFoot;
+      animation-timing-function: cubic-bezier(.2,.7,.2,1);
+    }
+    /* Not tied to the boot cycle — it runs at its own pace underneath. */
+    [data-boot="sweep"] {
+      animation: omBootSweep 1.5s cubic-bezier(.45,.05,.55,.95) infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      /* The component also reads this through AccessibilityInfo and drops the
+         moving parts structurally, but that lookup is async — this keeps the
+         first frame still while it resolves. */
+      [data-boot] { animation: none !important; }
+      /* With the cycle off, park the icon arrived rather than at the
+         keyframe's origin, where it would be invisible and blurred. */
+      [data-boot="icon"] { opacity: 1 !important; transform: none !important; filter: none !important; }
+      [data-boot="wipe"] { -webkit-mask-image: none !important; mask-image: none !important; }
+      [data-boot="gloss"], [data-boot="line"] { display: none !important; }
+      [data-boot="rule"], [data-boot="foot"] { opacity: 1 !important; transform: none !important; }
+      /* A pulse is not the movement this setting is asking us to drop, and
+         something has to say the app is still working. */
+      [data-boot="glow"] {
+        transform: scale(1) !important;
+        animation: omBootBreathe 2.6s ease-in-out infinite !important;
+      }
+    }
+
     /* Settings popover: fades and lifts into place from under the pill. */
     [data-pop] {
       transition: opacity 180ms cubic-bezier(.23,1,.32,1), transform 180ms cubic-bezier(.23,1,.32,1);
@@ -202,6 +344,17 @@ export const scrimState = (open: boolean) =>
 /** Attach one of the hero band's web-only gradient/mask layers. */
 export const heroLayer = (part: "bg" | "overlay" | "stripes" | "art") =>
   web ? ({ dataSet: { hero: part } } as any) : {};
+/**
+ * Attach one of the boot loader's web-only layers. The masks, blend mode and
+ * blur filters can't go through RN Web's style prop, so they live in the sheet
+ * above and bind by data attribute; native skips them entirely.
+ */
+export type BootPart =
+  | "haze" | "stage" | "glow" | "line"
+  | "icon" | "wipe" | "vignette" | "gloss"
+  | "rule" | "foot" | "sweep";
+export const bootLayer = (part: BootPart) =>
+  web ? ({ dataSet: { boot: part } } as any) : {};
 /** Settings popover open/closed transition. */
 export const popState = (open: boolean) =>
   web ? ({ dataSet: { pop: open ? "open" : "closed" } } as any) : {};
