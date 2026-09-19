@@ -43,14 +43,19 @@ function sameAllow(a: RosterRule, b: RosterRule): boolean {
   return a.allow.length === b.allow.length && a.allow.every(x => b.allow.includes(x));
 }
 
-export function buildTopLineups(
+/**
+ * Builds the search once and hands back two ways to drive it: all at once, or
+ * one top-level branch at a time. Everything below is shared, so the sliced
+ * and synchronous runs cannot drift apart.
+ */
+function createSolver(
   players: Player[],
   rules: RosterRule[],
   cap: number,
   topN: number,
   maxPerTeam: number | null,
   lockedIds: Set<string> = new Set()
-): Lineup[] {
+) {
   // Pre-assign locked players to their slots
   const lockedPlayers = players.filter(p => lockedIds.has(p.id));
   const preAssigned = new Map<number, Player>();
@@ -154,6 +159,26 @@ export function buildTopLineups(
     if (best.length > topN) best.pop();
   }
 
+  /** One candidate placed in one slot, plus everything that follows from it. */
+  function expand(slotIdx: number, k: number, curProj: number, curSalary: number) {
+    const pl = candidatesPerSlot[slotIdx][k];
+    if (usedIds.has(pl.id)) return;
+    const nextSalary = curSalary + (pl.salary || 0);
+    if (nextSalary > cap) return;
+    if (maxPerTeam != null && (teamCount.get(pl.team) || 0) >= maxPerTeam) return;
+
+    usedIds.add(pl.id);
+    teamCount.set(pl.team, (teamCount.get(pl.team) || 0) + 1);
+    chosen[slotIdx] = pl;
+
+    // Next slot resumes after this index only when it is interchangeable.
+    const nextStart = slotIdx + 1 < nSlots && orderedWithPrev[slotIdx + 1] ? k + 1 : 0;
+    dfs(slotIdx + 1, curProj + pl.proj, nextSalary, nextStart);
+
+    usedIds.delete(pl.id);
+    teamCount.set(pl.team, (teamCount.get(pl.team) || 1) - 1);
+  }
+
   function dfs(slotIdx: number, curProj: number, curSalary: number, startIdx: number) {
     if (slotIdx === nSlots) { record(curProj, curSalary); return; }
 
@@ -175,6 +200,36 @@ export function buildTopLineups(
     }
 
     const cands = candidatesPerSlot[slotIdx];
+    for (let k = startIdx; k < cands.length; k++) expand(slotIdx, k, curProj, curSalary);
+  }
+
+  /**
+   * The same search, but stopping `depth` branching slots down and handing the
+   * rest of each subtree back as a piece of work to run.
+   *
+   * The generator stays suspended at the yield, so the placement it just made
+   * is still in effect when the caller runs the thunk; it only backtracks when
+   * asked for the next one. That is what lets the caller await in between
+   * without the search losing its place.
+   */
+  function* walk(
+    slotIdx: number, curProj: number, curSalary: number, startIdx: number, depth: number
+  ): Generator<() => void> {
+    if (slotIdx >= nSlots || depth === 0) {
+      yield () => dfs(slotIdx, curProj, curSalary, startIdx);
+      return;
+    }
+    if (curSalary + minSuffix[slotIdx] > cap) return;
+
+    if (preAssigned.has(slotIdx)) {
+      const p = preAssigned.get(slotIdx)!;
+      chosen[slotIdx] = p;
+      // A locked player is not a branch, so it does not spend any depth.
+      yield* walk(slotIdx + 1, curProj + p.proj, curSalary + (p.salary || 0), 0, depth);
+      return;
+    }
+
+    const cands = candidatesPerSlot[slotIdx];
     for (let k = startIdx; k < cands.length; k++) {
       const pl = cands[k];
       if (usedIds.has(pl.id)) continue;
@@ -186,15 +241,70 @@ export function buildTopLineups(
       teamCount.set(pl.team, (teamCount.get(pl.team) || 0) + 1);
       chosen[slotIdx] = pl;
 
-      // Next slot resumes after this index only when it is interchangeable.
       const nextStart = slotIdx + 1 < nSlots && orderedWithPrev[slotIdx + 1] ? k + 1 : 0;
-      dfs(slotIdx + 1, curProj + pl.proj, nextSalary, nextStart);
+      yield* walk(slotIdx + 1, curProj + pl.proj, nextSalary, nextStart, depth - 1);
 
       usedIds.delete(pl.id);
       teamCount.set(pl.team, (teamCount.get(pl.team) || 1) - 1);
     }
   }
 
-  dfs(0, 0, 0, 0);
-  return best.map(e => e.lineup);
+  return {
+    runSync() {
+      dfs(0, 0, 0, 0);
+      return best.map(e => e.lineup);
+    },
+    tasks: (depth: number) => walk(0, 0, 0, 0, depth),
+    result: () => best.map(e => e.lineup),
+  };
+}
+
+export function buildTopLineups(
+  players: Player[],
+  rules: RosterRule[],
+  cap: number,
+  topN: number,
+  maxPerTeam: number | null,
+  lockedIds: Set<string> = new Set()
+): Lineup[] {
+  return createSolver(players, rules, cap, topN, maxPerTeam, lockedIds).runSync();
+}
+
+/**
+ * The same solve, in slices, for the browser.
+ *
+ * A full slate takes well over a second of solid computation, and it used to
+ * run in one go on the main thread. On a phone that is several seconds during
+ * which the page cannot paint or answer a tap, and iOS Safari responds by
+ * killing the tab -- the page appears to reload, and on a second attempt
+ * Safari gives up with "a problem repeatedly occurred".
+ *
+ * Splitting two branching slots down gives a few hundred pieces rather than a
+ * dozen, and control returns to the browser whenever a slice has run long
+ * enough. That keeps the tab alive and the throw animating. Same search, same
+ * answers, same order -- only the thread is shared now.
+ */
+export async function buildTopLineupsSliced(
+  players: Player[],
+  rules: RosterRule[],
+  cap: number,
+  topN: number,
+  maxPerTeam: number | null,
+  lockedIds: Set<string> = new Set(),
+  opts: { sliceMs?: number; depth?: number } = {}
+): Promise<Lineup[]> {
+  const { sliceMs = 12, depth = 2 } = opts;
+  const solver = createSolver(players, rules, cap, topN, maxPerTeam, lockedIds);
+
+  let sliceStart = Date.now();
+  for (const task of solver.tasks(depth)) {
+    task();
+    // setTimeout rather than a microtask: a resolved promise would be drained
+    // within the same task and never actually hand the thread back.
+    if (Date.now() - sliceStart >= sliceMs) {
+      await new Promise<void>(r => setTimeout(r, 0));
+      sliceStart = Date.now();
+    }
+  }
+  return solver.result();
 }

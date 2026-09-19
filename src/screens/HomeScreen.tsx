@@ -18,7 +18,7 @@ import FootballLoader from "../components/FootballLoader";
 import HeroBand from "../components/HeroBand";
 import InlinePool, { PosFilter, Sort, DEFAULT_SORT } from "../components/PlayerPool";
 import { SummaryPill, SettingsPopover, Draft, Anchor, Scoring } from "../components/Settings";
-import { buildTopLineups } from "../optimizer";
+import { buildTopLineupsSliced } from "../optimizer";
 import { useTheme } from "../ThemeContext";
 import { radius, space, type as T, APP_WIDTH } from "../theme";
 import { Card, PillButton, PanelRightIcon } from "../components/ui";
@@ -203,8 +203,8 @@ export default function HomeScreen() {
 
   const clearExcluded = () => setExcludedIds(new Set());
 
-  const solve = (pool: Player[], c = cap, n = topN, mpt = maxPerTeam, locked = lockedIds) => {
-    const result = buildTopLineups(pool, rules, c, Math.max(1, n || 1), mpt, locked);
+  const solve = async (pool: Player[], c = cap, n = topN, mpt = maxPerTeam, locked = lockedIds) => {
+    const result = await buildTopLineupsSliced(pool, rules, c, Math.max(1, n || 1), mpt, locked);
     setLineups(result);
     setRunId(x => x + 1);
   };
@@ -220,15 +220,14 @@ export default function HomeScreen() {
     /*
      * Two frames before solving, not setTimeout(0).
      *
-     * The solve blocks the main thread, so whatever hasn't reached the screen
-     * by the time it starts won't until it ends. A setTimeout(0) runs on the
-     * next task, which is still ahead of the next paint -- so the loader was
-     * being mounted and torn down again without ever being drawn. The first
-     * rAF runs before that paint; the second runs after it, by which point
-     * the bar is genuinely on screen.
+     * Even sliced, the first slice runs to completion before anything paints.
+     * A setTimeout(0) runs on the next task, which is still ahead of the next
+     * paint -- so the loader was being mounted and torn down again without
+     * ever being drawn. The first rAF runs before that paint; the second runs
+     * after it, by which point the bar is genuinely on screen.
      */
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      solve(solvePlayers);
+    requestAnimationFrame(() => requestAnimationFrame(async () => {
+      await solve(solvePlayers);
       /*
        * Then hold the bar for one complete throw, so a slate small enough to
        * solve instantly still shows the ball rather than a flash of blue.
@@ -284,7 +283,16 @@ export default function HomeScreen() {
       if (w === "3PM")  return d.window3pm;
       return d.windowNoon || d.window3pm;
     });
-    solve(pool, d.cap, d.topN, d.maxPerTeam);
+
+    // Applying settings re-solves, which is the same second-plus of work as
+    // pressing Generate — so it gets the same bar rather than a dead page.
+    setGenerating(true);
+    const startedAt = Date.now();
+    requestAnimationFrame(() => requestAnimationFrame(async () => {
+      await solve(pool, d.cap, d.topN, d.maxPerTeam);
+      const elapsed = Date.now() - startedAt;
+      setTimeout(() => setGenerating(false), Math.max(0, THROW_CYCLE_MS - elapsed));
+    }));
   };
 
   const column = { width: "100%" as const, maxWidth: APP_WIDTH, alignSelf: "center" as const };
